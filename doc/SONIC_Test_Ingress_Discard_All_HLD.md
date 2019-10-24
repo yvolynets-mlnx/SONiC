@@ -5,7 +5,7 @@
     - [Related DUT CLI commands](#related-dut-cli-commands)
 - [General test flow](#general-test-flow)
 - [Run test](#run-test)
-    - [Test cases](#test-cases)
+- [Test cases](#test-cases)
     - [Test case #1](#test-case-1)
     - [Test case #2](#test-case-2)
     - [Test case #3](#test-case-3)
