@@ -23,6 +23,9 @@
     - [Test case #15](#test-case-15)
     - [Test case #16](#test-case-16)
 
+#### [Note]
+Proposal to implement more extendent test cases on phase 2 when https://github.com/Azure/SONiC/blob/master/doc/drop_counters/drop_counters_HLD.md will be implemented.
+
 #### Overview
 The purpose is to test "ingress_discard_all" counter triggers on receiving specific packets.
 The "ingress_discard_all" counter counts all discard events. This counter counts concurrently with other discard counters.
@@ -47,7 +50,22 @@ Check field:
 ```RX_DRP```
 
 #### General test flow
-Inject packet into tor port. Set specifc MAC or IP addresses to BGP route learned on spine ports. Check "ingress_discard_all" counter incremented. Check the packet was dropped on spine port.
+- Select two pairs of PTF and DUT ports considering topology: PTF_PORT[1] <--->DUT_PORT[1], PTF_PORT[2] <--->DUT_PORT[2]
+- Clear counters. Use CLI command "sonic-clear counters"
+
+- For buffer counters verification:
+	- [TODO]
+- For other counter verification:
+	- Inject 1 packet into PTF_PORT[1]
+- Check "ingress_discard_all" counter incremented:
+	- For buffer counters verification:
+		- [TODO]
+	- For other counter verification:
+		- By 1
+- Additional verification:
+    [Add additional verifications for L2, L3, ACL and buffers counters in phase 2. When https://github.com/Azure/SONiC/blob/master/doc/drop_counters/drop_counters_HLD.md will be implemented]
+- Check the packet was dropped by sniffing traffic on PTF_PORT[2]
+
 
 #### Run test
 ```
