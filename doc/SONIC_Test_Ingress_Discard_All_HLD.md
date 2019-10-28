@@ -3,6 +3,7 @@
 - [Overview](#overview)
     - [Scope](#scope)
     - [Related DUT CLI commands](#related-dut-cli-commands)
+    - [SAI APIs](#sai-apis)
 - [General test flow](#general-test-flow)
 - [Run test](#run-test)
 - [Test cases](#test-cases)
@@ -24,13 +25,13 @@
     - [Test case #16](#test-case-16)
 
 #### Overview
-The purpose is to test "RX_DRP" counter got from show command "show interfaces counters" triggers on receiving specific packets.
+The purpose is to test "RX_DRP" counter got from show command "show interfaces counters" triggers on receiving specific packets by DUT.
 The "RX_DRP" counter counts all discard events. This counter counts concurrently with other discard counters.
 The test assumes all necessary configuration are already pre-configured on the SONIC switch before test runs.
 Destination IP address of the injected packet must be routable to ensure packet should not be routed but dropped.
 
 #### Scope
-The purpose of the test is testing of "RX_DRP" counter triggering on SONIC system, making sure that specific traffic drops correctly, according to sent packet and configured packet discards.
+The purpose of test cases is to verify that "RX_DRP" counter triggers on SONIC system, making sure that specific traffic drops correctly, according to sent packet and configured packet discards.
 Supported topologies:
 ```
 t0
@@ -38,6 +39,29 @@ t1
 t1-lag
 ptf32
 ```
+
+#### Discard groups covered by test case
+| Test case ID| Group type|
+|-------------|---------|
+|Test case #1 | Ethernet|
+|Test case #2 | Ethernet|
+|Test case #3 | Ethernet|
+|Test case #4 | Ethernet|
+|Test case #5 | IP|
+|Test case #6 | IP|
+|Test case #7 | IP|
+|Test case #8 | IP|
+|Test case #9 | IP|
+|Test case #10 | IP|
+|Test case #11 | IP|
+|Test case #12 | IP|
+|Test case #13 | IP|
+|Test case #14 | IP|
+|Test case #15 | IP|
+|Test case #16 | IP|
+|Test case #17 | IP|
+|Test case #18 | IP|
+
 
 #### Related DUT CLI commands
 | **Command**                                                      | **Comment** |
