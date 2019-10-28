@@ -23,17 +23,14 @@
     - [Test case #15](#test-case-15)
     - [Test case #16](#test-case-16)
 
-#### [Note]
-Proposal to implement more extendent test cases on phase 2 when https://github.com/Azure/SONiC/blob/master/doc/drop_counters/drop_counters_HLD.md will be implemented.
-
 #### Overview
-The purpose is to test "RX_DRP" counter got show command "show interfaces counters" triggers on receiving specific packets.
+The purpose is to test "RX_DRP" counter got from show command "show interfaces counters" triggers on receiving specific packets.
 The "RX_DRP" counter counts all discard events. This counter counts concurrently with other discard counters.
 The test assumes all necessary configuration are already pre-configured on the SONIC switch before test runs.
 Destination IP address of the injected packet must be routable to ensure packet should not be routed but dropped.
 
 #### Scope
-The purpose of the test is testing of "ingress_discard_all" counter triggering on SONIC system, making sure that specific traffic drops correctly, according to sent packet and configured packet discards.
+The purpose of the test is testing of "RX_DRP" counter triggering on SONIC system, making sure that specific traffic drops correctly, according to sent packet and configured packet discards.
 Supported topologies:
 ```
 t0
@@ -48,7 +45,10 @@ ptf32
 | show interfaces counters              | Check ```RX_DRP```                     |
 | counterpoll rif enable                | Enable RIF counters                    |
 | show interface counters rif           | Show RIF counters                      |
-| aclshow -a                            | Show ALC counters                      |
+| aclshow -a                            | Check ```PACKETS COUNT```              |
+
+#### SAI APIs
+```SAI_PORT_STAT_IF_IN_DISCARDS``` - to query number of all discards
 
 #### General test flow
 Each test case will use the following port types:
@@ -64,7 +64,7 @@ N - 5
 - Select two pairs of PTF and DUT ports considering topology: PTF_PORT[1] <--->DUT_PORT[1], PTF_PORT[2] <--->DUT_PORT[2]
 - Clear counters. Use CLI command "sonic-clear counters"
 - Inject N packet into PTF_PORT[1] (N - depends on test case)
-- Check "ingress_discard_all" counter incremented on N
+- Check "RX_DRP" counter incremented on N
 	- If counter was not incremented on N, test fails with expected message
 - Check other counters were incremented on N based on sent packet type, sent port and expected drop reason (depends on test case)
 	- If counter was not incremented on N, test fails with expected message
@@ -88,7 +88,7 @@ After packet is sent using source port index, test framework waits during 5 seco
 #### Test case #1
 Test objective
 
-Verify packet drops when SMAC and DMAC are equal.
+Verify packet drops when SMAC and DMAC are equal
 
 Packet to trigger drop
 ```
@@ -101,13 +101,13 @@ Packet to trigger drop
 
 Test steps
 - PTF host will send IP packet specifying identical src and dst MAC.
-- When packet reaches SONIC DUT, it should be dropped by "SAI_IN_DROP_REASON_SMAC_EQUALS_DMAC"
-- Verify "ingress_discard_all" counter increment
+- When packet reaches SONIC DUT, it should be dropped according to the test objective
+- Verify "RX_DRP" counter increment
 
 #### Test case #2
 Test objective
 
-Verify packet drops when packet VLAN ID does not match ingress port VLAN ID
+Verify VLAN tagged packet drops when packet VLAN ID does not match ingress port VLAN ID
 
 Packet to trigger drop
 ```
@@ -127,13 +127,13 @@ Packet to trigger drop
 
 Test steps
 - PTF host will send IP packet specifying VID different then port VLAN
-- When packet reaches SONIC DUT, it should be dropped by "SAI_IN_DROP_REASON_VLAN_TAG_NOT_ALLOWED"
-- Verify "ingress_discard_all" counter increment
+- When packet reaches SONIC DUT, it should be dropped according to the test objective
+- Verify "RX_DRP" counter increment
 
 #### Test case #3
 Test objective
 
-Verify packet with SMAC Multicast drops
+Verify packet with multicast SMAC drops
 
 Packet to trigger drop
 ```
@@ -152,18 +152,32 @@ Packet to trigger drop
 
 Test steps
 - PTF host will send IP packet specifying multicast SMAC.
-- When packet reaches SONIC DUT, it should be dropped by "SAI_IN_DROP_REASON_SMAC_MULTICAST"
-- Verify "ingress_discard_all" counter increment
+- When packet reaches SONIC DUT, it should be dropped according to the test objective
+- Verify "RX_DRP" counter increment
 
 #### Test case #4
 Test objective
 
 Verify packet with reserved DMAC drops
 
-Packet to trigger drop
+Packet1 to trigger drop (use reserved for future standardization MAC address)
 ```
 ###[ Ethernet ]###
-  dst = 01:80:c2:00:00:09
+  dst = 01:80:C2:00:00:05
+  src = [auto]
+  type = 0x800
+###[ IP ]###
+    version = 4
+    ttl = [auto]
+    proto = tcp
+    src = 10.0.0.2
+    dst = [get_from_route_info]
+...
+```
+Packet2 to trigger drop (use provider Bridge group address)
+```
+###[ Ethernet ]###
+  dst = 01:80:C2:00:00:08
   src = [auto]
   type = 0x800
 ###[ IP ]###
@@ -176,14 +190,18 @@ Packet to trigger drop
 ```
 
 Test steps
-- PTF host will send IP packet specifying reserved DMAC
-- When packet reaches SONIC DUT, it should be dropped by "SAI_IN_DROP_REASON_DMAC_RESERVED"
-- Verify "ingress_discard_all" counter increment
+- PTF host will send IP packet1 specifying reserved DMAC
+- When packet reaches SONIC DUT, it should be dropped according to the test objective
+- Verify "RX_DRP" counter increment
+---
+- PTF host will send IP packet2 specifying reserved DMAC
+- When packet reaches SONIC DUT, it should be dropped according to the test objective
+- Verify "RX_DRP" counter increment
 
 #### Test case #5
 Test objective
 
-Verify packet drops by loop-back filter
+Verify packet drops by loop-back filter. Loop-back filter means that route to the host with DST IP of received packet exists on received interface
 
 Packet to trigger drop
 ```
@@ -202,13 +220,13 @@ Packet to trigger drop
 
 Test steps
 - PTF host will send IP packet specifying DST IP of VM host. Port to send is port which IP interface is in VM subnet.
-- When packet reaches SONIC DUT, it should be dropped by "SAI_IN_DROP_REASON_L2_LOOPBACK_FILTER"
-- Verify "ingress_discard_all" counter increment
+- When packet reaches SONIC DUT, it should be dropped according to the test objective
+- Verify "RX_DRP" counter increment
 
 #### Test case #6
 Test objective
 
-Verify packet which exceed router interface MTU (for IP and/or MPLS packets) drops
+Verify packet which exceed router interface MTU (for IP packets) drops
 Note: make sure that configured MTU on testbed server and fanout are greater then DUT port MTU
 
 Packet to trigger drop
@@ -227,8 +245,8 @@ Packet to trigger drop
 
 Test steps
 - PTF host will send IP packet which exceed router interface MTU
-- When packet reaches SONIC DUT, it should be dropped by "SAI_IN_DROP_REASON_EXCEEDS_L3_MTU"
-- Verify "ingress_discard_all" counter increment
+- When packet reaches SONIC DUT, it should be dropped according to the test objective
+- Verify "RX_DRP" counter increment
 
 #### Test case #7
 Test objective
@@ -253,8 +271,8 @@ Packet to trigger drop
 
 Test steps
 - PTF host will send IP packet with TTL = 0
-- When packet reaches SONIC DUT, it should be dropped by "SAI_IN_DROP_REASON_TTL"
-- Verify "ingress_discard_all" counter increment
+- When packet reaches SONIC DUT, it should be dropped according to the test objective
+- Verify "RX_DRP" counter increment
 
 #### Test case #8
 Test objective
@@ -269,29 +287,29 @@ Packet list:
 
 Test steps
 - PTF host will send IGMP v1 v2 v3 membership query
-- When packet reaches SONIC DUT, it should be dropped by "SAI_IN_DROP_REASON_NON_ROUTABLE"
-- Verify "ingress_discard_all" counter increment
+- When packet reaches SONIC DUT, it should be dropped according to the test objective
+- Verify "RX_DRP" counter increment
 ---
 - PTF host will send IGMP v1 membership report
-- When packet reaches SONIC DUT, it should be dropped by "SAI_IN_DROP_REASON_NON_ROUTABLE"
-- Verify "ingress_discard_all" counter increment
+- When packet reaches SONIC DUT, it should be dropped according to the test objective
+- Verify "RX_DRP" counter increment
 ---
 - PTF host will send IGMP v2 membership report
-- When packet reaches SONIC DUT, it should be dropped by "SAI_IN_DROP_REASON_NON_ROUTABLE"
-- Verify "ingress_discard_all" counter increment
+- When packet reaches SONIC DUT, it should be dropped according to the test objective
+- Verify "RX_DRP" counter increment
 ---
 - PTF host will send IGMP v2 leave group
-- When packet reaches SONIC DUT, it should be dropped by "SAI_IN_DROP_REASON_NON_ROUTABLE"
-- Verify "ingress_discard_all" counter increment
+- When packet reaches SONIC DUT, it should be dropped according to the test objective
+- Verify "RX_DRP" counter increment
 ---
 - PTF host will send IGMP v3 membership report
-- When packet reaches SONIC DUT, it should be dropped by "SAI_IN_DROP_REASON_NON_ROUTABLE"
-- Verify "ingress_discard_all" counter increment
+- When packet reaches SONIC DUT, it should be dropped according to the test objective
+- Verify "RX_DRP" counter increment
 
 #### Test case #9
 Test objective
 
-Verify packet which is not ip/mpls (no ip header) drops
+Verify packet which is not ip (no ip header available) drops
 
 Packet to trigger drop
 ```
@@ -306,8 +324,8 @@ Packet to trigger drop
 
 Test steps
 - PTF host will send packet without IP header
-- When packet reaches SONIC DUT, it should be dropped by "SAI_IN_DROP_REASON_NO_L3_HEADER"
-- Verify "ingress_discard_all" counter increment
+- When packet reaches SONIC DUT, it should be dropped according to the test objective
+- Verify "RX_DRP" counter increment
 
 #### Test case #10
 Test objective
@@ -354,16 +372,16 @@ Packet3 to trigger drop (Incorrect IPv4 IHL)
 
 Test steps
 - PTF host will send packet1
-- When packet reaches SONIC DUT, it should be dropped by "SAI_IN_DROP_REASON_IP_HEADER_ERROR"
-- Verify "ingress_discard_all" counter increment
+- When packet reaches SONIC DUT, it should be dropped according to the test objective
+- Verify "RX_DRP" counter increment
 ---
 - PTF host will send packet2
-- When packet reaches SONIC DUT, it should be dropped by "SAI_IN_DROP_REASON_IP_HEADER_ERROR"
-- Verify "ingress_discard_all" counter increment
+- When packet reaches SONIC DUT, it should be dropped according to the test objective
+- Verify "RX_DRP" counter increment
 ---
 - PTF host will send packet3
-- When packet reaches SONIC DUT, it should be dropped by "SAI_IN_DROP_REASON_IP_HEADER_ERROR"
-- Verify "ingress_discard_all" counter increment
+- When packet reaches SONIC DUT, it should be dropped according to the test objective
+- Verify "RX_DRP" counter increment
 
 #### Test case #11
 Test objective
@@ -404,8 +422,8 @@ Packet2 to trigger drop
 
 Test steps
 - PTF host will send packet1
-- When packet reaches SONIC DUT, it should be dropped by "SAI_IN_DROP_REASON_UC_DIP_MC_DMAC"
-- Verify "ingress_discard_all" counter increment
+- When packet reaches SONIC DUT, it should be dropped according to the test objective
+- Verify "RX_DRP" counter increment
 
 #### Test case #12
 Test objective
@@ -440,12 +458,12 @@ Packet2 to trigger drop
 
 Test steps
 - PTF host will send packet1
-- When packet reaches SONIC DUT, it should be dropped by "SAI_IN_DROP_REASON_DIP_LOOPBACK"
-- Verify "ingress_discard_all" counter increment
+- When packet reaches SONIC DUT, it should be dropped according to the test objective
+- Verify "RX_DRP" counter increment
 ---
 - PTF host will send packet2
-- When packet reaches SONIC DUT, it should be dropped by "SAI_IN_DROP_REASON_DIP_LOOPBACK"
-- Verify "ingress_discard_all" counter increment
+- When packet reaches SONIC DUT, it should be dropped according to the test objective
+- Verify "RX_DRP" counter increment
 
 #### Test case #13
 Test objective
@@ -480,12 +498,12 @@ Packet2 to trigger drop
 
 Test steps
 - PTF host will send packet1
-- When packet reaches SONIC DUT, it should be dropped by "SAI_IN_DROP_REASON_SIP_LOOPBACK"
-- Verify "ingress_discard_all" counter increment
+- When packet reaches SONIC DUT, it should be dropped according to the test objective
+- Verify "RX_DRP" counter increment
 ---
 - PTF host will send packet2
-- When packet reaches SONIC DUT, it should be dropped by "SAI_IN_DROP_REASON_SIP_LOOPBACK"
-- Verify "ingress_discard_all" counter increment
+- When packet reaches SONIC DUT, it should be dropped according to the test objective
+- Verify "RX_DRP" counter increment
  
 #### Test case #14
 Test objective
@@ -520,17 +538,17 @@ Packet2 to trigger drop
 
 Test steps
 - PTF host will send packet1
-- When packet reaches SONIC DUT, it should be dropped by "SAI_IN_DROP_REASON_SIP_MC"
-- Verify "ingress_discard_all" counter increment
+- When packet reaches SONIC DUT, it should be dropped according to the test objective
+- Verify "RX_DRP" counter increment
 ---
 - PTF host will send packet2
-- When packet reaches SONIC DUT, it should be dropped by "SAI_IN_DROP_REASON_SIP_MC"
-- Verify "ingress_discard_all" counter increment
+- When packet reaches SONIC DUT, it should be dropped according to the test objective
+- Verify "RX_DRP" counter increment
 
 #### Test case #15
 Test objective
 
-Verify DUT drops packet where SRC IP address is in class e
+Verify DUT drops packet where SRC IP address is in class E
 IPv4
 AND sip == 240.0.0.0/4
 AND sip != 255.255.255.255
@@ -561,12 +579,12 @@ Packet2 to trigger drop
 
 Test steps
 - PTF host will send packet1
-- When packet reaches SONIC DUT, it should be dropped by "SAI_IN_DROP_REASON_SIP_CLASS_E"
-- Verify "ingress_discard_all" counter increment
+- When packet reaches SONIC DUT, it should be dropped according to the test objective
+- Verify "RX_DRP" counter increment
 ---
 - PTF host will send packet2
-- When packet reaches SONIC DUT, it should be dropped by "SAI_IN_DROP_REASON_SIP_CLASS_E"
-- Verify "ingress_discard_all" counter increment
+- When packet reaches SONIC DUT, it should be dropped according to the test objective
+- Verify "RX_DRP" counter increment
 
 #### Test case #16
 Test objective
@@ -602,12 +620,12 @@ Packet2 to trigger drop
 
 Test steps
 - PTF host will send packet1
-- When packet reaches SONIC DUT, it should be dropped by "SAI_IN_DROP_REASON_SIP_UNSPECIFIED"
-- Verify "ingress_discard_all" counter increment
+- When packet reaches SONIC DUT, it should be dropped according to the test objective
+- Verify "RX_DRP" counter increment
 ---
 - PTF host will send packet2
-- When packet reaches SONIC DUT, it should be dropped by "SAI_IN_DROP_REASON_SIP_UNSPECIFIED"
-- Verify "ingress_discard_all" counter increment
+- When packet reaches SONIC DUT, it should be dropped according to the test objective
+- Verify "RX_DRP" counter increment
 
 #### Test case #17
 Test objective
@@ -643,12 +661,12 @@ Packet2 to trigger drop
 
 Test steps
 - PTF host will send packet1
-- When packet reaches SONIC DUT, it should be dropped by "SAI_IN_DROP_REASON_DIP_UNSPECIFIED"
-- Verify "ingress_discard_all" counter increment
+- When packet reaches SONIC DUT, it should be dropped according to the test objective
+- Verify "RX_DRP" counter increment
 ---
 - PTF host will send packet2
-- When packet reaches SONIC DUT, it should be dropped by "SAI_IN_DROP_REASON_DIP_UNSPECIFIED"
-- Verify "ingress_discard_all" counter increment
+- When packet reaches SONIC DUT, it should be dropped according to the test objective
+- Verify "RX_DRP" counter increment
 
 #### Test case #18
 Test objective
@@ -669,5 +687,5 @@ Packet1 to trigger drop
 
 Test steps
 - PTF host will send packet1
-- When packet reaches SONIC DUT, it should be dropped
-- Verify "ingress_discard_all" counter increment
+- When packet reaches SONIC DUT, it should be dropped according to the test objective
+- Verify "RX_DRP" counter increment
