@@ -27,10 +27,10 @@
 Proposal to implement more extendent test cases on phase 2 when https://github.com/Azure/SONiC/blob/master/doc/drop_counters/drop_counters_HLD.md will be implemented.
 
 #### Overview
-The purpose is to test "ingress_discard_all" counter triggers on receiving specific packets.
-The "ingress_discard_all" counter counts all discard events. This counter counts concurrently with other discard counters.
+The purpose is to test "RX_DRP" counter got show command "show interfaces counters" triggers on receiving specific packets.
+The "RX_DRP" counter counts all discard events. This counter counts concurrently with other discard counters.
 The test assumes all necessary configuration are already pre-configured on the SONIC switch before test runs.
-Destination IP address of the injected packet must be routable to ensure packet should be routed but was dropped.
+Destination IP address of the injected packet must be routable to ensure packet should not be routed but dropped.
 
 #### Scope
 The purpose of the test is testing of "ingress_discard_all" counter triggering on SONIC system, making sure that specific traffic drops correctly, according to sent packet and configured packet discards.
@@ -43,28 +43,32 @@ ptf32
 ```
 
 #### Related DUT CLI commands
-Command to check "ingress_discard_all" counter value:
-```show interfaces counters```
-
-Check field:
-```RX_DRP```
+| **Command**                                                      | **Comment** |
+|------------------------------------------------------------------|-------------|
+| show interfaces counters              | Check ```RX_DRP```                     |
+| counterpoll rif enable                | Enable RIF counters                    |
+| show interface counters rif           | Show RIF counters                      |
+| aclshow -a                            | Show ALC counters                      |
 
 #### General test flow
+Each test case will use the following port types:
+- VLAN (T0)
+- LAG (T0, T1-LAG)
+- Router (T1, T1-LAG, PTF32)
+
+##### Sent packet number:
+N - 5
+
+##### Repeat test scenario for all available port types depends on run topology (VLAN, LAG, Router)
+
 - Select two pairs of PTF and DUT ports considering topology: PTF_PORT[1] <--->DUT_PORT[1], PTF_PORT[2] <--->DUT_PORT[2]
 - Clear counters. Use CLI command "sonic-clear counters"
-
-- For buffer counters verification:
-	- [TODO]
-- For other counter verification:
-	- Inject 1 packet into PTF_PORT[1]
-- Check "ingress_discard_all" counter incremented:
-	- For buffer counters verification:
-		- [TODO]
-	- For other counter verification:
-		- By 1
-- Additional verification:
-    [Add additional verifications for L2, L3, ACL and buffers counters in phase 2. When https://github.com/Azure/SONiC/blob/master/doc/drop_counters/drop_counters_HLD.md will be implemented]
-- Check the packet was dropped by sniffing traffic on PTF_PORT[2]
+- Inject N packet into PTF_PORT[1] (N - depends on test case)
+- Check "ingress_discard_all" counter incremented on N
+	- If counter was not incremented on N, test fails with expected message
+- Check other counters were incremented on N based on sent packet type, sent port and expected drop reason (depends on test case)
+	- If counter was not incremented on N, test fails with expected message
+- Check the packet was dropped by sniffing packet absence on PTF_PORT[2]
 
 
 #### Run test
@@ -79,7 +83,7 @@ Each test case will run specific traffic to trigger specific discard reasone.
 
 Pytest fixture - "ptfadapter" is used to construct and send packets.
 
-After packet is sent using source port index, test framework waits for specific packet did not appear, due to ingress packet drop, on one of the destination port indices.
+After packet is sent using source port index, test framework waits during 5 seconds for specific packet did not appear, due to ingress packet drop, on one of the destination port indices.
 
 #### Test case #1
 Test objective
@@ -205,6 +209,7 @@ Test steps
 Test objective
 
 Verify packet which exceed router interface MTU (for IP and/or MPLS packets) drops
+Note: make sure that configured MTU on testbed server and fanout are greater then DUT port MTU
 
 Packet to trigger drop
 ```
@@ -604,3 +609,65 @@ Test steps
 - When packet reaches SONIC DUT, it should be dropped by "SAI_IN_DROP_REASON_SIP_UNSPECIFIED"
 - Verify "ingress_discard_all" counter increment
 
+#### Test case #17
+Test objective
+
+Verify DUT drops packet where DST IP address is not specified
+
+IPv4 sip == 0.0.0.0/32
+Note: for IPv6 (sip == ::0)
+
+Packet1 to trigger drop
+```
+...
+###[ IP ]###
+    version = 4
+    ttl = [auto]
+    proto = tcp
+    src = [auto]
+    dst = [0.0.0.0]
+...
+```
+
+Packet2 to trigger drop
+```
+...
+###[ IP ]###
+    version = 6
+    ttl = [auto]
+    proto = tcp
+    src = [auto]
+    dst = [::0]
+...
+```
+
+Test steps
+- PTF host will send packet1
+- When packet reaches SONIC DUT, it should be dropped by "SAI_IN_DROP_REASON_DIP_UNSPECIFIED"
+- Verify "ingress_discard_all" counter increment
+---
+- PTF host will send packet2
+- When packet reaches SONIC DUT, it should be dropped by "SAI_IN_DROP_REASON_DIP_UNSPECIFIED"
+- Verify "ingress_discard_all" counter increment
+
+#### Test case #18
+Test objective
+
+Verify DUT drops packet when configured ACL DROP for SRC IP 20.0.0.0/24
+
+Packet1 to trigger drop
+```
+...
+###[ IP ]###
+    version = 4
+    ttl = [auto]
+    proto = tcp
+    src = [20.0.0.10]
+    dst = [auto]
+...
+```
+
+Test steps
+- PTF host will send packet1
+- When packet reaches SONIC DUT, it should be dropped
+- Verify "ingress_discard_all" counter increment
