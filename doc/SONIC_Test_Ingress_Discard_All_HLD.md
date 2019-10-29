@@ -5,7 +5,7 @@
     - [Supported topologies](#supported-topologies)
     - [Discard groups covered by test case](#discard-groups-covered-by-test-cases)
     - [Related DUT CLI commands](#related-dut-cli-commands)
-    - [SAI APIs](#sai-apis)
+    - [SAI attributes](#sai-attributes)
 - [General test flow](#general-test-flow)
 - [Run test](#run-test)
 - [Test cases](#test-cases)
@@ -77,8 +77,8 @@ Please refer to the test case for detailed description.
 | show interface counters rif           | Show RIF counters                      |
 | aclshow -a                            | Check ```PACKETS COUNT```              |
 
-#### SAI APIs
-```SAI_PORT_STAT_IF_IN_DISCARDS``` - to query number of all discards
+#### SAI attributes
+```SAI_PORT_STAT_IF_IN_DISCARDS``` - query number of all discards
 
 #### General test flow
 ##### Each test case will use the following port types:
