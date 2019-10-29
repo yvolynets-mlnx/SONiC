@@ -2,6 +2,8 @@
 
 - [Overview](#overview)
     - [Scope](#scope)
+    - [Supported topologies](#supported-topologies)
+    - [Discard groups covered by test case](#discard-groups-covered-by-test-cases)
     - [Related DUT CLI commands](#related-dut-cli-commands)
     - [SAI APIs](#sai-apis)
 - [General test flow](#general-test-flow)
@@ -32,7 +34,9 @@ Destination IP address of the injected packet must be routable to ensure packet 
 
 #### Scope
 The purpose of test cases is to verify that "RX_DRP" counter triggers on SONIC system, making sure that specific traffic drops correctly, according to sent packet and configured packet discards.
-Supported topologies:
+
+
+#### Supported topologies:
 ```
 t0
 t1
@@ -40,27 +44,29 @@ t1-lag
 ptf32
 ```
 
-#### Discard groups covered by test case
-| Test case ID| Group type|
-|-------------|---------|
-|Test case #1 | Ethernet|
-|Test case #2 | Ethernet|
-|Test case #3 | Ethernet|
-|Test case #4 | Ethernet|
-|Test case #5 | IP|
-|Test case #6 | IP|
-|Test case #7 | IP|
-|Test case #8 | IP|
-|Test case #9 | IP|
-|Test case #10 | IP|
-|Test case #11 | IP|
-|Test case #12 | IP|
-|Test case #13 | IP|
-|Test case #14 | IP|
-|Test case #15 | IP|
-|Test case #16 | IP|
-|Test case #17 | IP|
-|Test case #18 | IP|
+#### Discard groups covered by test cases
+Please refer to the test case for detailed description.
+
+| Test case ID| Drop reason | Group type|
+|-------------|-------------|-----------|
+| 1 | SMAC and DMAC are equal |Ethernet |
+| 2 | Not allowed VLAN TAG| Ethernet|
+| 3 | Multicast SMAC | Ethernet|
+| 4 | Reserved DMAC | Ethernet|
+| 5 | Loop-back filter | IP|
+| 6 | Packet exceed router interface MTU| IP|
+| 7 | Time To Live (TTL) Expired | IP|
+| 8 | Discard at router interface for non-routable packets | IP|
+| 9 | Absent IP header | IP|
+| 10 | Broken IP header - header checksum or IPver or IPv4 IHL too short | IP|
+| 11 | Unicast IP with multicast DMAC or broadcast DST MAC | IP|
+| 12 | DST IP is loopback address | IP|
+| 13 | SRC IP is loopback address | IP|
+| 14 | SRC IP is multicast address | IP|
+| 15 | SRC IP address is in class E | IP|
+| 16 | SRC IP address is not specified | IP|
+| 17 | DST IP address is not specified | IP|
+| 18 | ACL SRC IP DROP| IP|
 
 
 #### Related DUT CLI commands
@@ -75,13 +81,16 @@ ptf32
 ```SAI_PORT_STAT_IF_IN_DISCARDS``` - to query number of all discards
 
 #### General test flow
-Each test case will use the following port types:
+##### Each test case will use the following port types:
 - VLAN (T0)
 - LAG (T0, T1-LAG)
 - Router (T1, T1-LAG, PTF32)
 
 ##### Sent packet number:
 N - 5
+
+##### Stop VMs
+Stop control plane traffic generation before tests run, to do this stop all VMs.
 
 ##### Repeat test scenario for all available port types depends on run topology (VLAN, LAG, Router)
 
@@ -94,6 +103,8 @@ N - 5
 	- If counter was not incremented on N, test fails with expected message
 - Check the packet was dropped by sniffing packet absence on PTF_PORT[2]
 
+##### Start VMs
+Restore previously running VMs
 
 #### Run test
 ```
@@ -251,6 +262,7 @@ Test steps
 Test objective
 
 Verify packet which exceed router interface MTU (for IP packets) drops
+
 Note: make sure that configured MTU on testbed server and fanout are greater then DUT port MTU
 
 Packet to trigger drop
@@ -453,7 +465,9 @@ Test steps
 Test objective
 
 Verify DUT drops packet where DST IP is loopback address
+
 For ipv4: dip==127.0.0.0/8
+
 For ipv6: dip==::1/128 OR dip==0:0:0:0:0:ffff:7f00:0/104
 
 Packet1 to trigger drop
@@ -493,7 +507,9 @@ Test steps
 Test objective
 
 Verify DUT drops packet where SRC IP is loopback address
+
 For ipv4: dip==127.0.0.0/8
+
 For ipv6: dip==::1/128 OR dip==0:0:0:0:0:ffff:7f00:0/104
 
 Packet1 to trigger drop
@@ -533,7 +549,9 @@ Test steps
 Test objective
 
 Verify DUT drops packet where SRC IP is multicast address
+
 For ipv4: sip = 224.0.0.0/4
+
 For ipv6: sip == FF00::/8
 
 Packet1 to trigger drop
@@ -573,9 +591,10 @@ Test steps
 Test objective
 
 Verify DUT drops packet where SRC IP address is in class E
-IPv4
-AND sip == 240.0.0.0/4
-AND sip != 255.255.255.255
+
+SIP == 240.0.0.0/4
+
+SIP != 255.255.255.255
 
 Packet1 to trigger drop
 ```
@@ -616,6 +635,7 @@ Test objective
 Verify DUT drops packet where SRC IP address is not specified
 
 IPv4 sip == 0.0.0.0/32
+
 Note: for IPv6 (sip == ::0)
 
 Packet1 to trigger drop
@@ -657,6 +677,7 @@ Test objective
 Verify DUT drops packet where DST IP address is not specified
 
 IPv4 sip == 0.0.0.0/32
+
 Note: for IPv6 (sip == ::0)
 
 Packet1 to trigger drop
