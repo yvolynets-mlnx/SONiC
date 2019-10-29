@@ -345,7 +345,7 @@ Test steps
 #### Test case #9
 Test objective
 
-Verify packet which is not ip (no ip header available) drops
+Verify packet with no ip header available - drops
 
 Packet to trigger drop
 ```
