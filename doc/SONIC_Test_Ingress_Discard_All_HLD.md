@@ -29,14 +29,25 @@
     - [Test case #18](#test-case-18)
 
 #### Overview
-The purpose is to test "RX_DRP" counter got from show command "show interfaces counters" triggers on receiving specific packets by DUT.
-The "RX_DRP" counter counts all discard events. This counter counts concurrently with other discard counters.
-The test assumes all necessary configuration are already pre-configured on the SONIC switch before test runs.
-Destination IP address of the injected packet must be routable to ensure packet should not be routed but dropped.
+The purpose is to test drop counters triggers on receiving specific packets by DUT.
+
+The test assumes control plane traffic is disabled before test run by disabling VMs.
+
+Destination IP address of the injected packet must be routable to ensure packet should not be routed via specific interface but dropped.
+
+##### For Ethernet drop reasons:
+```show interfaces counters``` - check ```RX_DRP```
+
+##### For IP drop reasons:
+```show interface counters rif``` - check ```RX_ERR```
+
+##### For ACL drop reasons:
+```aclshow -a``` - check ```PACKETS COUNT```
 
 #### Scope
-The purpose of test cases is to verify that "RX_DRP" counter triggers on SONIC system, making sure that specific traffic drops correctly, according to sent packet and configured packet discards.
-
+The purpose of test cases is to verify that:
+- appropriate packet drop counters trigger on SONIC system on expected value
+- making sure that specific traffic drops correctly, according to sent packet and configured packet discards
 
 #### Supported topologies:
 ```
@@ -76,7 +87,7 @@ Please refer to the test case for detailed description.
 |------------------------------------------------------------------|-------------|
 | show interfaces counters              | Check ```RX_DRP```                     |
 | counterpoll rif enable                | Enable RIF counters                    |
-| show interface counters rif           | Show RIF counters                      |
+| show interface counters rif           | Check ```RX_ERR```                     |
 | aclshow -a                            | Check ```PACKETS COUNT```              |
 
 #### SAI attributes
@@ -123,7 +134,7 @@ Pytest fixture - "ptfadapter" is used to construct and send packets.
 After packet is sent using source port index, test framework waits during 5 seconds for specific packet did not appear, due to ingress packet drop, on one of the destination port indices.
 
 #### Test case #1
-Test objective
+##### Test objective
 
 Verify packet drops when SMAC and DMAC are equal
 
@@ -136,13 +147,16 @@ Packet to trigger drop
 ...
 ```
 
-Test steps
+##### Get interfaces which are members of LAG, RIF and VLAN. Repeat defined test steps for each of those interfaces.
+
+##### Test steps
 - PTF host will send IP packet specifying identical src and dst MAC.
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Verify "RX_DRP" counter increment
+- Execute CLI command - ```show interfaces counters```
+- Verify ```RX_DRP``` incremented
 
 #### Test case #2
-Test objective
+##### Test objective
 
 Verify VLAN tagged packet drops when packet VLAN ID does not match ingress port VLAN ID
 
@@ -162,13 +176,16 @@ Packet to trigger drop
 ...
 ```
 
-Test steps
+##### Get interfaces which are members of LAG, RIF and VLAN. Repeat defined test steps for each of those interfaces.
+
+##### Test steps
 - PTF host will send IP packet specifying VID different then port VLAN
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Verify "RX_DRP" counter increment
+- Execute CLI command - ```show interfaces counters```
+- Verify ```RX_DRP``` incremented
 
 #### Test case #3
-Test objective
+##### Test objective
 
 Verify packet with multicast SMAC drops
 
@@ -187,13 +204,16 @@ Packet to trigger drop
 ...
 ```
 
-Test steps
+##### Get interfaces which are members of LAG, RIF and VLAN. Repeat defined test steps for each of those interfaces.
+
+##### Test steps
 - PTF host will send IP packet specifying multicast SMAC.
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Verify "RX_DRP" counter increment
+- Execute CLI command - ```show interfaces counters```
+- Verify ```RX_DRP``` incremented
 
 #### Test case #4
-Test objective
+##### Test objective
 
 Verify packet with reserved DMAC drops
 
@@ -226,17 +246,21 @@ Packet2 to trigger drop (use provider Bridge group address)
 ...
 ```
 
-Test steps
+##### Get interfaces which are members of LAG, RIF and VLAN. Repeat defined test steps for each of those interfaces.
+
+##### Test steps
 - PTF host will send IP packet1 specifying reserved DMAC
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Verify "RX_DRP" counter increment
+- Execute CLI command - ```show interfaces counters```
+- Verify ```RX_DRP``` incremented
 ---
 - PTF host will send IP packet2 specifying reserved DMAC
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Verify "RX_DRP" counter increment
+- Execute CLI command - ```show interfaces counters```
+- Verify ```RX_DRP``` incremented
 
 #### Test case #5
-Test objective
+##### Test objective
 
 Verify packet drops by loop-back filter. Loop-back filter means that route to the host with DST IP of received packet exists on received interface
 
@@ -255,13 +279,16 @@ Packet to trigger drop
 ...
 ```
 
-Test steps
+##### Get interfaces which are members of LAG, RIF and VLAN. Repeat defined test steps for each of those interfaces.
+
+##### Test steps
 - PTF host will send IP packet specifying DST IP of VM host. Port to send is port which IP interface is in VM subnet.
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Verify "RX_DRP" counter increment
+- Execute CLI command - ```show interface counters rif```
+- Verify ```RX_ERR``` incremented
 
 #### Test case #6
-Test objective
+##### Test objective
 
 Verify packet which exceed router interface MTU (for IP packets) drops
 
@@ -281,13 +308,16 @@ Packet to trigger drop
 ...
 ```
 
-Test steps
+##### Get interfaces which are members of LAG, RIF and VLAN. Repeat defined test steps for each of those interfaces.
+
+##### Test steps
 - PTF host will send IP packet which exceed router interface MTU
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Verify "RX_DRP" counter increment
+- Execute CLI command - ```show interface counters rif```
+- Verify ```RX_ERR``` incremented
 
 #### Test case #7
-Test objective
+##### Test objective
 
 Verify packet with TTL expired (ttl <= 0) drops
 
@@ -307,13 +337,16 @@ Packet to trigger drop
 ...
 ```
 
-Test steps
+##### Get interfaces which are members of LAG, RIF and VLAN. Repeat defined test steps for each of those interfaces.
+
+##### Test steps
 - PTF host will send IP packet with TTL = 0
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Verify "RX_DRP" counter increment
+- Execute CLI command - ```show interface counters rif```
+- Verify ```RX_ERR``` incremented
 
 #### Test case #8
-Test objective
+##### Test objective
 
 Verify non-routable packets discarded at router interface
 Packet list:
@@ -323,29 +356,36 @@ Packet list:
 - IGMP v2 leave group
 - IGMP v3 membership report
 
-Test steps
+##### Get interfaces which are members of LAG, RIF and VLAN. Repeat defined test steps for each of those interfaces.
+
+##### Test steps
 - PTF host will send IGMP v1 v2 v3 membership query
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Verify "RX_DRP" counter increment
+- Execute CLI command - ```show interface counters rif```
+- Verify ```RX_ERR``` incremented
 ---
 - PTF host will send IGMP v1 membership report
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Verify "RX_DRP" counter increment
+- Execute CLI command - ```show interface counters rif```
+- Verify ```RX_ERR``` incremented
 ---
 - PTF host will send IGMP v2 membership report
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Verify "RX_DRP" counter increment
+- Execute CLI command - ```show interface counters rif```
+- Verify ```RX_ERR``` incremented
 ---
 - PTF host will send IGMP v2 leave group
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Verify "RX_DRP" counter increment
+- Execute CLI command - ```show interface counters rif```
+- Verify ```RX_ERR``` incremented
 ---
 - PTF host will send IGMP v3 membership report
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Verify "RX_DRP" counter increment
+- Execute CLI command - ```show interface counters rif```
+- Verify ```RX_ERR``` incremented
 
 #### Test case #9
-Test objective
+##### Test objective
 
 Verify packet with no ip header available - drops
 
@@ -360,13 +400,16 @@ Packet to trigger drop
     dport = [auto]
 ```
 
-Test steps
+##### Get interfaces which are members of LAG, RIF and VLAN. Repeat defined test steps for each of those interfaces.
+
+##### Test steps
 - PTF host will send packet without IP header
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Verify "RX_DRP" counter increment
+- Execute CLI command - ```show interface counters rif```
+- Verify ```RX_ERR``` incremented
 
 #### Test case #10
-Test objective
+##### Test objective
 
 Verify DUT drop packet with broken ip header due to header checksum or IPver or IPv4 IHL too short
 
@@ -408,21 +451,26 @@ Packet3 to trigger drop (Incorrect IPv4 IHL)
 ...
 ```
 
-Test steps
+##### Get interfaces which are members of LAG, RIF and VLAN. Repeat defined test steps for each of those interfaces.
+
+##### Test steps
 - PTF host will send packet1
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Verify "RX_DRP" counter increment
+- Execute CLI command - ```show interface counters rif```
+- Verify ```RX_ERR``` incremented
 ---
 - PTF host will send packet2
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Verify "RX_DRP" counter increment
+- Execute CLI command - ```show interface counters rif```
+- Verify ```RX_ERR``` incremented
 ---
 - PTF host will send packet3
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Verify "RX_DRP" counter increment
+- Execute CLI command - ```show interface counters rif```
+- Verify ```RX_ERR``` incremented
 
 #### Test case #11
-Test objective
+##### Test objective
 
 Verify DUT drops unicast IP packet sent via:
 - multicast DST MAC
@@ -458,13 +506,16 @@ Packet2 to trigger drop
 ...
 ```
 
-Test steps
+##### Get interfaces which are members of LAG, RIF and VLAN. Repeat defined test steps for each of those interfaces.
+
+##### Test steps
 - PTF host will send packet1
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Verify "RX_DRP" counter increment
+- Execute CLI command - ```show interface counters rif```
+- Verify ```RX_ERR``` incremented
 
 #### Test case #12
-Test objective
+##### Test objective
 
 Verify DUT drops packet where DST IP is loopback address
 
@@ -496,17 +547,21 @@ Packet2 to trigger drop
 ...
 ```
 
-Test steps
+##### Get interfaces which are members of LAG, RIF and VLAN. Repeat defined test steps for each of those interfaces.
+
+##### Test steps
 - PTF host will send packet1
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Verify "RX_DRP" counter increment
+- Execute CLI command - ```show interface counters rif```
+- Verify ```RX_ERR``` incremented
 ---
 - PTF host will send packet2
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Verify "RX_DRP" counter increment
+- Execute CLI command - ```show interface counters rif```
+- Verify ```RX_ERR``` incremented
 
 #### Test case #13
-Test objective
+##### Test objective
 
 Verify DUT drops packet where SRC IP is loopback address
 
@@ -538,17 +593,21 @@ Packet2 to trigger drop
 ...
 ```
 
-Test steps
+##### Get interfaces which are members of LAG, RIF and VLAN. Repeat defined test steps for each of those interfaces.
+
+##### Test steps
 - PTF host will send packet1
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Verify "RX_DRP" counter increment
+- Execute CLI command - ```show interface counters rif```
+- Verify ```RX_ERR``` incremented
 ---
 - PTF host will send packet2
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Verify "RX_DRP" counter increment
+- Execute CLI command - ```show interface counters rif```
+- Verify ```RX_ERR``` incremented
  
 #### Test case #14
-Test objective
+##### Test objective
 
 Verify DUT drops packet where SRC IP is multicast address
 
@@ -580,17 +639,21 @@ Packet2 to trigger drop
 ...
 ```
 
-Test steps
+##### Get interfaces which are members of LAG, RIF and VLAN. Repeat defined test steps for each of those interfaces.
+
+##### Test steps
 - PTF host will send packet1
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Verify "RX_DRP" counter increment
+- Execute CLI command - ```show interface counters rif```
+- Verify ```RX_ERR``` incremented
 ---
 - PTF host will send packet2
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Verify "RX_DRP" counter increment
+- Execute CLI command - ```show interface counters rif```
+- Verify ```RX_ERR``` incremented
 
 #### Test case #15
-Test objective
+##### Test objective
 
 Verify DUT drops packet where SRC IP address is in class E
 
@@ -622,17 +685,21 @@ Packet2 to trigger drop
 ...
 ```
 
-Test steps
+##### Get interfaces which are members of LAG, RIF and VLAN. Repeat defined test steps for each of those interfaces.
+
+##### Test steps
 - PTF host will send packet1
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Verify "RX_DRP" counter increment
+- Execute CLI command - ```show interface counters rif```
+- Verify ```RX_ERR``` incremented
 ---
 - PTF host will send packet2
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Verify "RX_DRP" counter increment
+- Execute CLI command - ```show interface counters rif```
+- Verify ```RX_ERR``` incremented
 
 #### Test case #16
-Test objective
+##### Test objective
 
 Verify DUT drops packet where SRC IP address is not specified
 
@@ -664,17 +731,21 @@ Packet2 to trigger drop
 ...
 ```
 
-Test steps
+##### Get interfaces which are members of LAG, RIF and VLAN. Repeat defined test steps for each of those interfaces.
+
+##### Test steps
 - PTF host will send packet1
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Verify "RX_DRP" counter increment
+- Execute CLI command - ```show interface counters rif```
+- Verify ```RX_ERR``` incremented
 ---
 - PTF host will send packet2
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Verify "RX_DRP" counter increment
+- Execute CLI command - ```show interface counters rif```
+- Verify ```RX_ERR``` incremented
 
 #### Test case #17
-Test objective
+##### Test objective
 
 Verify DUT drops packet where DST IP address is not specified
 
@@ -706,17 +777,21 @@ Packet2 to trigger drop
 ...
 ```
 
-Test steps
+##### Get interfaces which are members of LAG, RIF and VLAN. Repeat defined test steps for each of those interfaces.
+
+##### Test steps
 - PTF host will send packet1
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Verify "RX_DRP" counter increment
+- Execute CLI command - ```show interface counters rif```
+- Verify ```RX_ERR``` incremented
 ---
 - PTF host will send packet2
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Verify "RX_DRP" counter increment
+- Execute CLI command - ```show interface counters rif```
+- Verify ```RX_ERR``` incremented
 
 #### Test case #18
-Test objective
+##### Test objective
 
 Verify DUT drops packet when configured ACL DROP for SRC IP 20.0.0.0/24
 
@@ -732,7 +807,10 @@ Packet1 to trigger drop
 ...
 ```
 
-Test steps
+##### Get interfaces which are members of LAG, RIF and VLAN. Repeat defined test steps for each of those interfaces.
+
+##### Test steps
 - PTF host will send packet1
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Verify "RX_DRP" counter increment
+- Execute CLI command - ```aclshow -a```
+- Verify ```PACKETS COUNT``` incremented
