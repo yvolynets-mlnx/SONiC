@@ -1,5 +1,3 @@
-### [DRAFT, UNDER DEVELOPMENT]
-
 - [Overview](#overview)
     - [Scope](#scope)
     - [Supported topologies](#supported-topologies)
@@ -29,6 +27,7 @@
     - [Test case #18](#test-case-18)
     - [Test case #19](#test-case-19)
     - [Test case #20](#test-case-20)
+    - [Test case #21](#test-case-21)
 
 #### Overview
 The purpose is to test drop counters triggers on receiving specific packets by DUT.
@@ -84,7 +83,7 @@ Please refer to the test case for detailed description.
 | 18 | SRC IP address is link-local | IP|
 | 19 | DST IP address is link-local | IP|
 | 20 | ACL SRC IP DROP| IP|
-
+| 21 | ERIF interface disabled | IP|
 
 #### Related DUT CLI commands
 | **Command**                                                      | **Comment** |
@@ -93,6 +92,7 @@ Please refer to the test case for detailed description.
 | counterpoll rif enable                | Enable RIF counters                    |
 | show interface counters rif           | Check ```RX_ERR```                     |
 | aclshow -a                            | Check ```PACKETS COUNT```              |
+| sonic-clear counters                  | Clear counters                         |
 
 Listed above commands can be different for different vendors. So there should be created appropriate parser for CLI command per vendor.
 There will be created a file with constant CLI commands per vendor. Then this mapping will be used by test cases automatically based on vendor info got from DUT.
@@ -125,6 +125,14 @@ For example:
 - LAG (T0, T1-LAG)
 - Router (T1, T1-LAG, PTF32)
 
+##### Drop counters which are going to be checked
+It depends on test objective.
+
+Will be verified one of the following drop counters:
+- Drop counter for L2 discards
+- Drop counter for L3 discards
+- Drop counter for ACL discards
+
 ##### Sent packet number:
 N=5
 
@@ -133,14 +141,14 @@ Before test suite run - disable control plane traffic generation. Use "testbed-c
 
 ##### step #2 - Execute test scenario for all available port types depends on run topology (VLAN, LAG, Router)
 
-- Select two pairs of PTF and DUT ports considering topology: PTF_PORT[1] <--->DUT_PORT[1], PTF_PORT[2] <--->DUT_PORT[2]
-- Clear counters. Use CLI command "sonic-clear counters"
-- Inject N packet into PTF_PORT[1] (N - depends on test case)
-- Check "RX_DRP" counter incremented on N
+- Select PTF ports to send and sniff traffic
+- Clear counters on DUT. Use CLI command "sonic-clear counters"
+- Inject N packet via PTF port selected for TX
+- Check specific drop counter incremented on N (depends on test case)
 	- If counter was not incremented on N, test fails with expected message
-- Check other counters were incremented on N based on sent packet type, sent port and expected drop reason (depends on test case)
-	- If counter was not incremented on N, test fails with expected message
-- Check the packet was dropped by sniffing packet absence on PTF_PORT[2]
+- Check other counters were not incremented on N based on sent packet type, sent port and expected drop reason (depends on test case)
+	- If counter was incremented on N, test fails with expected message
+- Check the packet was dropped by sniffing packet absence on PTF port selected for RX
 
 ##### step #3 - Enable VMs
 Enable previously disabled VMs using "testbed-cli.sh" script with "connect-vms" option.
@@ -960,3 +968,32 @@ Packet1 to trigger drop
 - Verify drop counter incremented
 - Get L3 drop counter
 - Verify L3 drop counter is not incremented
+
+#### Test case #21
+##### Test objective
+
+Verify egress RIF drop counter incremented while sending packets that are destined for a neighboring device but the egress link is down
+
+Packet1 to trigger drop
+```
+...
+###[ IP ]###
+    version = 4
+    ttl = [auto]
+    proto = tcp
+    src = [auto]
+    dst = [auto]
+...
+```
+
+##### Get interfaces which are members of LAG, RIF and VLAN. Repeat defined test steps for each of those interfaces.
+
+##### Test steps
+- Disable egress interface on DUT which is linked with neighbouring device
+- PTF host will send packet1
+- Verify that no packets appeared/captured on disabled link
+- Get L3 drop counter
+- Verify drop counter incremented
+- Get L2 drop counter
+- Verify L2 drop counter is not incremented
+- Enable back egress interface on DUT which is linked with neighbouring device
