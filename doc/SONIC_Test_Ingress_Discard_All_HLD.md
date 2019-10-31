@@ -27,6 +27,8 @@
     - [Test case #16](#test-case-16)
     - [Test case #17](#test-case-17)
     - [Test case #18](#test-case-18)
+    - [Test case #19](#test-case-19)
+    - [Test case #20](#test-case-20)
 
 #### Overview
 The purpose is to test drop counters triggers on receiving specific packets by DUT.
@@ -90,8 +92,30 @@ Please refer to the test case for detailed description.
 | show interface counters rif           | Check ```RX_ERR```                     |
 | aclshow -a                            | Check ```PACKETS COUNT```              |
 
+Listed above commands can be different for different vendors. So there should be created appropriate parser for CLI command per vendor.
+There will be created a file with constant CLI commands per vendor. Then this mapping will be used by test cases automatically based on vendor info got from DUT.
+
+For example:
+```
+- Vendor X:
+    "get_l2_pkt_drops": "show interfaces counters"
+    "get_l3_pkt_drops": "show interfaces counters rif"
+    "get_acl_pkt_drops": "aclshow -a"
+    "parser": "path_to_the_parser_py"
+...
+```
+
+##### Work need to be done based on this case
+- Create yml file which defines mapping of vendor to CLI commands for getting specific drop counters
+- Create helper, CLI command parser per vendor - python file which contains three functions:
+	- get_l2_pkt_drops
+	- get_l3_pkt_drops
+	- get_acl_pkt_drops
+
 #### SAI attributes
-```SAI_PORT_STAT_IF_IN_DISCARDS``` - query number of all discards
+```SAI_PORT_STAT_IF_IN_DISCARDS``` - number of L2 discards
+
+```SAI_ROUTER_INTERFACE_STAT_IN_ERROR_PACKETS``` - number of L3 discards
 
 #### General test flow
 ##### Each test case will use the following port types:
@@ -141,8 +165,8 @@ Verify packet drops when SMAC and DMAC are equal
 Packet to trigger drop
 ```
 ###[ Ethernet ]###
-  dst = 00:00:00:00:01:02
-  src = 00:00:00:00:01:02
+  dst = [DUT_MAC_ADDR]
+  src = [DUT_MAC_ADDR]
   type = 0x800
 ...
 ```
@@ -152,8 +176,10 @@ Packet to trigger drop
 ##### Test steps
 - PTF host will send IP packet specifying identical src and dst MAC.
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Execute CLI command - ```show interfaces counters```
-- Verify ```RX_DRP``` incremented
+- Get L2 drop counter
+- Verify drop counter incremented
+- Get L3 drop counter
+- Verify L3 drop counter is not incremented
 
 #### Test case #2
 ##### Test objective
@@ -181,8 +207,10 @@ Packet to trigger drop
 ##### Test steps
 - PTF host will send IP packet specifying VID different then port VLAN
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Execute CLI command - ```show interfaces counters```
-- Verify ```RX_DRP``` incremented
+- Get L2 drop counter
+- Verify drop counter incremented
+- Get L3 drop counter
+- Verify L3 drop counter is not incremented
 
 #### Test case #3
 ##### Test objective
@@ -209,8 +237,10 @@ Packet to trigger drop
 ##### Test steps
 - PTF host will send IP packet specifying multicast SMAC.
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Execute CLI command - ```show interfaces counters```
-- Verify ```RX_DRP``` incremented
+- Get L2 drop counter
+- Verify drop counter incremented
+- Get L3 drop counter
+- Verify L3 drop counter is not incremented
 
 #### Test case #4
 ##### Test objective
@@ -251,13 +281,17 @@ Packet2 to trigger drop (use provider Bridge group address)
 ##### Test steps
 - PTF host will send IP packet1 specifying reserved DMAC
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Execute CLI command - ```show interfaces counters```
-- Verify ```RX_DRP``` incremented
+- Get L2 drop counter
+- Verify drop counter incremented
+- Get L3 drop counter
+- Verify L3 drop counter is not incremented
 ---
 - PTF host will send IP packet2 specifying reserved DMAC
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Execute CLI command - ```show interfaces counters```
-- Verify ```RX_DRP``` incremented
+- Get L2 drop counter
+- Verify drop counter incremented
+- Get L3 drop counter
+- Verify L3 drop counter is not incremented
 
 #### Test case #5
 ##### Test objective
@@ -284,8 +318,10 @@ Packet to trigger drop
 ##### Test steps
 - PTF host will send IP packet specifying DST IP of VM host. Port to send is port which IP interface is in VM subnet.
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Execute CLI command - ```show interface counters rif```
-- Verify ```RX_ERR``` incremented
+- Get L3 drop counter
+- Verify drop counter incremented
+- Get L2 drop counter
+- Verify L2 drop counter is not incremented
 
 #### Test case #6
 ##### Test objective
@@ -313,8 +349,10 @@ Packet to trigger drop
 ##### Test steps
 - PTF host will send IP packet which exceed router interface MTU
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Execute CLI command - ```show interface counters rif```
-- Verify ```RX_ERR``` incremented
+- Get L3 drop counter
+- Verify drop counter incremented
+- Get L2 drop counter
+- Verify L2 drop counter is not incremented
 
 #### Test case #7
 ##### Test objective
@@ -342,8 +380,10 @@ Packet to trigger drop
 ##### Test steps
 - PTF host will send IP packet with TTL = 0
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Execute CLI command - ```show interface counters rif```
-- Verify ```RX_ERR``` incremented
+- Get L3 drop counter
+- Verify drop counter incremented
+- Get L2 drop counter
+- Verify L2 drop counter is not incremented
 
 #### Test case #8
 ##### Test objective
@@ -361,28 +401,38 @@ Packet list:
 ##### Test steps
 - PTF host will send IGMP v1 v2 v3 membership query
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Execute CLI command - ```show interface counters rif```
-- Verify ```RX_ERR``` incremented
+- Get L3 drop counter
+- Verify drop counter incremented
+- Get L2 drop counter
+- Verify L2 drop counter is not incremented
 ---
 - PTF host will send IGMP v1 membership report
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Execute CLI command - ```show interface counters rif```
-- Verify ```RX_ERR``` incremented
+- Get L3 drop counter
+- Verify drop counter incremented
+- Get L2 drop counter
+- Verify L2 drop counter is not incremented
 ---
 - PTF host will send IGMP v2 membership report
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Execute CLI command - ```show interface counters rif```
-- Verify ```RX_ERR``` incremented
+- Get L3 drop counter
+- Verify drop counter incremented
+- Get L2 drop counter
+- Verify L2 drop counter is not incremented
 ---
 - PTF host will send IGMP v2 leave group
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Execute CLI command - ```show interface counters rif```
-- Verify ```RX_ERR``` incremented
+- Get L3 drop counter
+- Verify drop counter incremented
+- Get L2 drop counter
+- Verify L2 drop counter is not incremented
 ---
 - PTF host will send IGMP v3 membership report
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Execute CLI command - ```show interface counters rif```
-- Verify ```RX_ERR``` incremented
+- Get L3 drop counter
+- Verify drop counter incremented
+- Get L2 drop counter
+- Verify L2 drop counter is not incremented
 
 #### Test case #9
 ##### Test objective
@@ -405,8 +455,10 @@ Packet to trigger drop
 ##### Test steps
 - PTF host will send packet without IP header
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Execute CLI command - ```show interface counters rif```
-- Verify ```RX_ERR``` incremented
+- Get L3 drop counter
+- Verify drop counter incremented
+- Get L2 drop counter
+- Verify L2 drop counter is not incremented
 
 #### Test case #10
 ##### Test objective
@@ -456,18 +508,24 @@ Packet3 to trigger drop (Incorrect IPv4 IHL)
 ##### Test steps
 - PTF host will send packet1
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Execute CLI command - ```show interface counters rif```
-- Verify ```RX_ERR``` incremented
+- Get L3 drop counter
+- Verify drop counter incremented
+- Get L2 drop counter
+- Verify L2 drop counter is not incremented
 ---
 - PTF host will send packet2
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Execute CLI command - ```show interface counters rif```
-- Verify ```RX_ERR``` incremented
+- Get L3 drop counter
+- Verify drop counter incremented
+- Get L2 drop counter
+- Verify L2 drop counter is not incremented
 ---
 - PTF host will send packet3
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Execute CLI command - ```show interface counters rif```
-- Verify ```RX_ERR``` incremented
+- Get L3 drop counter
+- Verify drop counter incremented
+- Get L2 drop counter
+- Verify L2 drop counter is not incremented
 
 #### Test case #11
 ##### Test objective
@@ -511,8 +569,10 @@ Packet2 to trigger drop
 ##### Test steps
 - PTF host will send packet1
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Execute CLI command - ```show interface counters rif```
-- Verify ```RX_ERR``` incremented
+- Get L3 drop counter
+- Verify drop counter incremented
+- Get L2 drop counter
+- Verify L2 drop counter is not incremented
 
 #### Test case #12
 ##### Test objective
@@ -552,13 +612,17 @@ Packet2 to trigger drop
 ##### Test steps
 - PTF host will send packet1
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Execute CLI command - ```show interface counters rif```
-- Verify ```RX_ERR``` incremented
+- Get L3 drop counter
+- Verify drop counter incremented
+- Get L2 drop counter
+- Verify L2 drop counter is not incremented
 ---
 - PTF host will send packet2
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Execute CLI command - ```show interface counters rif```
-- Verify ```RX_ERR``` incremented
+- Get L3 drop counter
+- Verify drop counter incremented
+- Get L2 drop counter
+- Verify L2 drop counter is not incremented
 
 #### Test case #13
 ##### Test objective
@@ -598,13 +662,17 @@ Packet2 to trigger drop
 ##### Test steps
 - PTF host will send packet1
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Execute CLI command - ```show interface counters rif```
-- Verify ```RX_ERR``` incremented
+- Get L3 drop counter
+- Verify drop counter incremented
+- Get L2 drop counter
+- Verify L2 drop counter is not incremented
 ---
 - PTF host will send packet2
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Execute CLI command - ```show interface counters rif```
-- Verify ```RX_ERR``` incremented
+- Get L3 drop counter
+- Verify drop counter incremented
+- Get L2 drop counter
+- Verify L2 drop counter is not incremented
  
 #### Test case #14
 ##### Test objective
@@ -644,13 +712,17 @@ Packet2 to trigger drop
 ##### Test steps
 - PTF host will send packet1
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Execute CLI command - ```show interface counters rif```
-- Verify ```RX_ERR``` incremented
+- Get L3 drop counter
+- Verify drop counter incremented
+- Get L2 drop counter
+- Verify L2 drop counter is not incremented
 ---
 - PTF host will send packet2
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Execute CLI command - ```show interface counters rif```
-- Verify ```RX_ERR``` incremented
+- Get L3 drop counter
+- Verify drop counter incremented
+- Get L2 drop counter
+- Verify L2 drop counter is not incremented
 
 #### Test case #15
 ##### Test objective
@@ -690,13 +762,17 @@ Packet2 to trigger drop
 ##### Test steps
 - PTF host will send packet1
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Execute CLI command - ```show interface counters rif```
-- Verify ```RX_ERR``` incremented
+- Get L3 drop counter
+- Verify drop counter incremented
+- Get L2 drop counter
+- Verify L2 drop counter is not incremented
 ---
 - PTF host will send packet2
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Execute CLI command - ```show interface counters rif```
-- Verify ```RX_ERR``` incremented
+- Get L3 drop counter
+- Verify drop counter incremented
+- Get L2 drop counter
+- Verify L2 drop counter is not incremented
 
 #### Test case #16
 ##### Test objective
@@ -736,13 +812,17 @@ Packet2 to trigger drop
 ##### Test steps
 - PTF host will send packet1
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Execute CLI command - ```show interface counters rif```
-- Verify ```RX_ERR``` incremented
+- Get L3 drop counter
+- Verify drop counter incremented
+- Get L2 drop counter
+- Verify L2 drop counter is not incremented
 ---
 - PTF host will send packet2
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Execute CLI command - ```show interface counters rif```
-- Verify ```RX_ERR``` incremented
+- Get L3 drop counter
+- Verify drop counter incremented
+- Get L2 drop counter
+- Verify L2 drop counter is not incremented
 
 #### Test case #17
 ##### Test objective
@@ -782,15 +862,77 @@ Packet2 to trigger drop
 ##### Test steps
 - PTF host will send packet1
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Execute CLI command - ```show interface counters rif```
-- Verify ```RX_ERR``` incremented
+- Get L3 drop counter
+- Verify drop counter incremented
+- Get L2 drop counter
+- Verify L2 drop counter is not incremented
 ---
 - PTF host will send packet2
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Execute CLI command - ```show interface counters rif```
-- Verify ```RX_ERR``` incremented
+- Get L3 drop counter
+- Verify drop counter incremented
+- Get L2 drop counter
+- Verify L2 drop counter is not incremented
 
 #### Test case #18
+##### Test objective
+
+Verify DUT drops packet where SRC IP is link-local address
+
+For ipv4: sip==169.254.0.0/16
+
+Packet1 to trigger drop
+```
+...
+###[ IP ]###
+    version = 4
+    ttl = [auto]
+    proto = tcp
+    src = [169.254.10.125]
+    dst = [auto]
+...
+```
+
+##### Get interfaces which are members of LAG, RIF and VLAN. Repeat defined test steps for each of those interfaces.
+
+##### Test steps
+- PTF host will send packet1
+- When packet reaches SONIC DUT, it should be dropped according to the test objective
+- Get L3 drop counter
+- Verify drop counter incremented
+- Get L2 drop counter
+- Verify L2 drop counter is not incremented
+
+#### Test case #19
+##### Test objective
+
+Verify DUT drops packet where DST IP is link-local address
+
+For ipv4: dip==169.254.0.0/16
+
+Packet1 to trigger drop
+```
+...
+###[ IP ]###
+    version = 4
+    ttl = [auto]
+    proto = tcp
+    src = [auto]]
+    dst = [169.254.10.125]
+...
+```
+
+##### Get interfaces which are members of LAG, RIF and VLAN. Repeat defined test steps for each of those interfaces.
+
+##### Test steps
+- PTF host will send packet1
+- When packet reaches SONIC DUT, it should be dropped according to the test objective
+- Get L3 drop counter
+- Verify drop counter incremented
+- Get L2 drop counter
+- Verify L2 drop counter is not incremented
+
+#### Test case #20
 ##### Test objective
 
 Verify DUT drops packet when configured ACL DROP for SRC IP 20.0.0.0/24
@@ -812,5 +954,7 @@ Packet1 to trigger drop
 ##### Test steps
 - PTF host will send packet1
 - When packet reaches SONIC DUT, it should be dropped according to the test objective
-- Execute CLI command - ```aclshow -a```
-- Verify ```PACKETS COUNT``` incremented
+- Get ACL drop counter
+- Verify drop counter incremented
+- Get L3 drop counter
+- Verify L3 drop counter is not incremented
