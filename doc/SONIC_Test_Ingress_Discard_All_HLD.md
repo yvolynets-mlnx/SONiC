@@ -81,7 +81,9 @@ Please refer to the test case for detailed description.
 | 15 | SRC IP address is in class E | IP|
 | 16 | SRC IP address is not specified | IP|
 | 17 | DST IP address is not specified | IP|
-| 18 | ACL SRC IP DROP| IP|
+| 18 | SRC IP address is link-local | IP|
+| 19 | DST IP address is link-local | IP|
+| 20 | ACL SRC IP DROP| IP|
 
 
 #### Related DUT CLI commands
