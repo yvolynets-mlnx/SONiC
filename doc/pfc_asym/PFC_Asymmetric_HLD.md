@@ -15,7 +15,7 @@
 The purpose is to test functionality of Asymmetric PFC on the SONIC based DUT, closely resembling production environment.
 
 ### Scope
-The test is targeting a running SONIC system with fully functioning configuration. The purpose of the test is to test functional testing of Asymmetric PFC on SONIC system.
+The test is targeting a running SONIC system with fully functioning configuration. The purpose of the test is to perform functional testing of Asymmetric PFC on SONIC system. There will be reused existed PTF test suite for PFC Asymmetric which is located at ```ansible\roles\test\files\saitests\pfc_asym.py```.
 
 ### Testbed
 The test will run on the following testbeds:
@@ -24,14 +24,60 @@ The test will run on the following testbeds:
 ## Setup configuration
 No setup pre-configuration is required, test will configure and clean-up all the configuration.
 
+## Existed modules refactoring
+There is already existed PFC asymmetric test cases which use PTF to send traffic.
+Test suite location is ```ansible\roles\test\files\saitests\pfc_asym.py```
+
+It requires some updates.
+
+1. Packets sending speed can be increased be using multiprocessing instead of multithreading library.
+
+```PfcAsymBaseTest.send```
+
+Use ```multiprocessing.Process``` instead of ```threading.Thread```.
+
+2. Looks like there is a redundancy in generating configuration file for ARP responder.
+
+```PfcAsymBaseTest.setUpArpResponder```
+
+Fix the loop to store file only once
+
+3. Need to remove dst port drop counters verification.
+
+```PfcAsymOffOnTxTest.runTest```
+
+Remove the following step which is defined by inline comment:
+```Verify that some packets are dropped on dst port, which means that Tx buffer is full```
+
 
 ## Python  modules to setup and run test (TODO)
 
+### Python modules
+*New test suite will be developed:*
+
+```tests/pfc_asym/pfc_asym.py```
+
+### Global variables
+```
+PFC_GEN_FILE = "pfc_gen.py"
+PFC_FRAMES_NUMBER = 1000000
+PFC_QUEUE_INDEX = 0xff
+```
+
+### PTF test case execution
+To run existed PTF test cases there will be used ```tests/ptf_runner.py``` module
+
 ### Pytest fixtures
+Preparation before test cases run will be executed in the following pytest fixtures:
+```setup, pfc_storm_template, pfc_storm_runner, deploy_pfc_gen```
+
+Description each of the fixture is below.
+
 ### setup (scope="module")
 *Setup steps*
 
 	- Gather minigraph facts about the device
+	- Ensure topology is T0, skip tests run otherwise
 	- Get server ports OIDs
 		docker exec -i database redis-cli --raw -n 2 HMGET COUNTERS_PORT_NAME_MAP {server_ports_names}
 	- Get server ports info
@@ -58,11 +104,9 @@ No setup pre-configuration is required, test will configure and clean-up all the
 
 *Teardown steps*
 
-	- Disable asymmetric PFC on all server interfaces
 	- Verify PFC value is restored to default
 	- Remove SAI tests from PTF container
 	- Remove portmap
-	- Stop PFC generator on fanout switch
 
 *Return dictionary in format*
 
@@ -156,7 +200,7 @@ fanout.exec_template(pfc_storm_template["pfc_storm_stop"], pfc_storm_template["t
 ```
 
 
-### deploy_pfc_gen (scope="module")
+### deploy_pfc_gen (scope="module", autouse=True)
 
 Deploy ```roles/test/files/helpers/pfc_gen.py``` to the fanout host.
 This step can be different for different platforms. Below there is description how it works for Mellanox and Arista cases, also how to add support of another platform type.
@@ -194,13 +238,6 @@ to trigger pfc storm **start/stop** action.
 in ```pfc_storm_template``` pytest fixture
 
 
-## Global variables
-```
-PFC_GEN_FILE = "pfc_gen.py"
-PFC_FRAMES_NUMBER = 1000000
-PFC_QUEUE_INDEX = 0xff
-```
-
 ## Test
 
 ## Test cases
@@ -208,6 +245,10 @@ PFC_QUEUE_INDEX = 0xff
 ### Test case # 1 – Asymmetric PFC Off Generate PFC frames
 #### Test objective
 Verify that DUT generates PFC frames only on lossless priorities when asymmetric PFC is disabled
+
+#### Used fixtures
+setup
+
 #### Test steps
 - Setup:
   - Start ARP responder
@@ -231,6 +272,10 @@ Verify that DUT generates PFC frames only on lossless priorities when asymmetric
 ### Test case # 2 – Asymmetric PFC Off RX pause frames
 #### Test objective
 Verify that while receiving PFC frames DUT drops packets only for lossless priorities (RX and Tx queue buffers are full)
+
+#### Used fixtures
+setup, pfc_storm_runner
+
 #### Test steps
 - Setup:
   - Start ARP responder
@@ -240,13 +285,11 @@ Verify that while receiving PFC frames DUT drops packets only for lossless prior
 - Get lossy priorities
 - Get server ports info
 - Get non server port info (Portchannel peers)
-- Start PFC generator on fanout switch
 - Send packets for lossy priorities from non-server port (src) to all server ports (dst)
 - Verify that packets are not dropped on src port
 - Verify that packets are not dropped on dst ports
 - Verify that packets are transmitted from from dst ports
 - Send packets for lossless priorities from non-server port (src) to all server ports (dst)
-- Stop PFC generator on fanout switch
 - Verify that some packets are dropped on src port, which means that Rx queue is full
 - Verify that some packets are dropped on dst ports, which means that Tx buffer is full
 
@@ -256,6 +299,10 @@ Verify that while receiving PFC frames DUT drops packets only for lossless prior
 ### Test case # 3 – Asymmetric PFC On Generate PFC frames
 #### Test objective
 Verify that DUT generates PFC frames only on lossless priorities when asymmetric PFC is enabled
+
+#### Used fixtures
+setup
+
 #### Test steps
 - Setup:
   - Start ARP responder
@@ -295,6 +342,10 @@ Verify that DUT generates PFC frames only on lossless priorities when asymmetric
 ### Test case # 4 – Asymmetric PFC "On" handle PFC frames on all priorities
 #### Test objective
 Verify that while receiving PFC frames DUT handle PFC frames on all priorities when asymetric mode is enabled
+
+#### Used fixtures
+setup, pfc_storm_runner
+
 #### Test steps
 - Setup:
   - Start ARP responder
@@ -306,17 +357,13 @@ Verify that while receiving PFC frames DUT handle PFC frames on all priorities w
 - Get lossy priorities
 - Get server ports info
 - Get non server port info (Portchannel peers)
-- Start PFC generator on fanout switch
 - Send packets for lossy priorities from non-server port (src) to all server ports (dst)
 - Verify that packets are not dropped on src port
 - Verify that some packets are dropped on dst ports, which means that Tx buffer is full
 - Send packets for lossless priorities from non-server port (src) to all server ports (dst)
 - Verify that some packets are dropped on src port, which means that Rx queue is full
 - Verify that some packets are dropped on dst ports, which means that Tx buffer is full
-
-- Stop PFC generator on fanout switch
 - Disable asymmetric PFC on all server interfaces
-- Verify PFC value is restored to default
 
 - Teardown:
   - Stop ARP responder
