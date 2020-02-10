@@ -27,6 +27,120 @@ No setup pre-configuration is required, test will configure and clean-up all the
 
 ## Python  modules to setup and run test (TODO)
 
+### Pytest fixtures
+### setup
+**Setup steps**
+
+	- Gather minigraph facts about the device
+	- Get server ports OIDs
+	- Get server ports info
+	- Get non server port info
+	- Set unique MACs to PTF interfaces
+		Run on PTF host- tests/scripts/change_mac.sh
+	- Set ARP responder:
+		- Copy ARP responder to PTF
+			src=tests/scripts/arp_responder.py; dst=/opt
+		- Copy ARP responder supervisor configuration to the PTF container
+			src=tests/scripts/arp_responder.conf.j2 dest=/etc/supervisor/conf.d/arp_responder.conf
+		- Update supervisor configuration
+			Execute on fanout:
+			supervisorctl reread
+			supervisorctl update
+	- Copy PTF tests to PTF host
+		src=roles/test/files/ptftests dest=/root
+	- Copy SAI tests to PTF host
+		src=roles/test/files/saitests dest=/root
+	- Copy PTF portmap to PTF host
+		Copy default, if existed vendor specific, copy vendor specific
+		src=ansible/roles/test/files/mlnx/default_interface_to_front_map.ini
+		dst=/root/default_interface_to_front_map.ini
+
+**Teardown steps**
+
+	- Disable asymmetric PFC on all server interfaces
+	- Verify PFC value is restored to default
+	- Remove SAI tests from PTF container
+	- Remove portmap
+	- Stop PFC generator on fanout switch
+
+**Return dictionary in format**
+
+```
+{"pfc_bitmask": {
+      "pfc_mask": [VALUE],
+      "pfc_rx_mask": [VALUE],
+      "pfc_tx_mask": [VALUE]
+ },
+ "ptf_test_params": {
+      "port_map_file": [VALUE],
+      "server": [VALUE],
+    "server_ports": [VALUE],
+    "non_server_port": [VALUE],
+    "router_mac": [VALUE],
+    "pfc_to_dscp": [VALUE],
+    "lossless_priorities": [VALUE],
+    "lossy_priorities": [VALUE]
+ }
+}
+```
+
+### pfc_storm_template
+**Creates dictionary which values depends on fanout HWSKU (MLNX-OS, Arista or others)**
+
+**Return dictionary in format**
+```
+{"file": {
+    "pfc_storm_start": [VALUE],
+    "pfc_storm_stop": [VALUE]
+  },
+ "template_params": {
+      "pfc_gen_file": PFC_GEN_FILE,
+      "pfc_queue_index": PFC_QUEUE_INDEX,
+      "pfc_frames_number": PFC_FRAMES_NUMBER,
+      "pfc_fanout_interface": [VALUE],
+      "ansible_eth0_ipv4_addr": [VALUE],
+      "pfc_asym": True
+  }
+}
+```
+
+### deploy_pfc_gen
+
+Deploy ```roles/test/files/helpers/pfc_gen.py``` to the fanout host.
+This step can be different for different platforms. Below there is description how it works for Mellanox and Arista cases, also how to add support of another platform type.
+
+**Mellanox platform**
+
+PFC packet generator is automatically deployed during fanout deployment procedure.
+
+Example of deploying fanout for Mellanox:
+```
+ansible-playbook -i lab fanout.yml -l ${FANOUT} --become --tags pfcwd_config -vvvv
+```
+
+**Arista platform**
+
+Deploy steps:
+- Ensure destination directory exists on fanout:
+"/mnt/flash/"
+- Create pfc generator file in case it doesn't exist
+"/mnt/flash/pfc_gen.py"
+- Deploy PFC generator to the fanout switch:
+Copy "roles/test/files/helpers/pfc_gen.py" to "/mnt/flash" directory
+
+**Other platforms**
+
+Tests currently support deployment of arista fanout switches, **to support other platforms:**
+
+1. Add platform specific logic to deploy pfc packet generator automatically in ```deploy_pfc_gen``` pytest fixture.
+Or manualy deploy ```roles/test/files/helpers/pfc_gen.py``` and ensure the file is available on fanout switch.
+
+2. Create ```pfc_storm_[sku].j2``` and ```pfc_storm_stop_[sku].j2``` under ```ansible/roles/test/templates/```
+to trigger pfc storm **start/stop** action.
+
+3. Set ```pfc_storm_start``` and ```pfc_storm_stop``` variables to platform-specific template names
+in ```pfc_storm_template``` pytest fixture
+
 ## Test
 
 ## Test cases
