@@ -28,11 +28,12 @@ No setup pre-configuration is required, test will configure and clean-up all the
 ## Python  modules to setup and run test (TODO)
 
 ### Pytest fixtures
-### setup
-**Setup steps**
+### setup (scope="module")
+*Setup steps*
 
 	- Gather minigraph facts about the device
 	- Get server ports OIDs
+		docker exec -i database redis-cli --raw -n 2 HMGET COUNTERS_PORT_NAME_MAP {server_ports_names}
 	- Get server ports info
 	- Get non server port info
 	- Set unique MACs to PTF interfaces
@@ -55,7 +56,7 @@ No setup pre-configuration is required, test will configure and clean-up all the
 		src=ansible/roles/test/files/mlnx/default_interface_to_front_map.ini
 		dst=/root/default_interface_to_front_map.ini
 
-**Teardown steps**
+*Teardown steps*
 
 	- Disable asymmetric PFC on all server interfaces
 	- Verify PFC value is restored to default
@@ -63,7 +64,7 @@ No setup pre-configuration is required, test will configure and clean-up all the
 	- Remove portmap
 	- Stop PFC generator on fanout switch
 
-**Return dictionary in format**
+*Return dictionary in format*
 
 ```
 {"pfc_bitmask": {
@@ -84,10 +85,33 @@ No setup pre-configuration is required, test will configure and clean-up all the
 }
 ```
 
-### pfc_storm_template
-**Creates dictionary which values depends on fanout HWSKU (MLNX-OS, Arista or others)**
+*Get lossless and lossy priorities*
 
-**Return dictionary in format**
+- Get buffer PG keys
+	```buf_pg_keys = docker exec -i database redis-cli --raw -n 4 KEYS *BUFFER_PG*```
+- Get buffer PG profiles
+	```docker exec -i database redis-cli -n 4 HGET {buf_pg_keys} "profile"```
+- Get lossless priorities based on obtained buffer PG profiles
+- Get lossy priorities based on obtained buffer PG profiles
+
+*Get PFC to DSCP mapping*
+
+* Get DSCP to TC map key
+	```dscp_to_tc_key = docker exec -i database redis-cli --raw -n 4 KEYS *DSCP_TO_TC_MAP*```
+* Get DSCP to TC map hash keys
+	```dscp_to_tc_keys= docker exec -i database redis-cli --raw -n 4 HKEYS "{dscp_to_tc_key}"```
+
+* Get DSCP to TC map
+	```dscp_to_tc = docker exec -i database redis-cli -n 4 HGET {dscp_to_tc_keys} {dscp_to_tc_keys_item}```
+* Get PFC to DSCP map
+	```combine dscp_to_tc with dscp_to_tc_keys```
+
+
+### pfc_storm_template (scope="module")
+Creates dictionary which items will be used to start/stop PFC generator on fanout switch.
+Dictionary values depends on fanout HWSKU (MLNX-OS, Arista or others)
+
+*Return dictionary in format*
 ```
 {"file": {
     "pfc_storm_start": [VALUE],
@@ -104,7 +128,35 @@ No setup pre-configuration is required, test will configure and clean-up all the
 }
 ```
 
-### deploy_pfc_gen
+For HWSKU equal to "MLNX-OS":
+
+      pfc_storm_start = "pfc_storm_mlnx.j2"
+      pfc_storm_stop = "pfc_storm_stop_mlnx.j2"
+
+For HWSKU equal to "Arista":
+
+      pfc_storm_start = "pfc_storm_arista.j2"
+      pfc_storm_stop = "pfc_storm_stop_arista.j2"
+
+
+### pfc_storm_runner (scope="function")
+
+*Setup steps*
+
+* Start PFC generator on fanout switch
+```
+fanout.exec_template(pfc_storm_template["pfc_storm_start"], pfc_storm_template["template_params"])
+```
+
+*Teardown steps*
+
+* Stop PFC generator on fanout switch
+```
+fanout.exec_template(pfc_storm_template["pfc_storm_stop"], pfc_storm_template["template_params"])
+```
+
+
+### deploy_pfc_gen (scope="module")
 
 Deploy ```roles/test/files/helpers/pfc_gen.py``` to the fanout host.
 This step can be different for different platforms. Below there is description how it works for Mellanox and Arista cases, also how to add support of another platform type.
@@ -140,6 +192,14 @@ to trigger pfc storm **start/stop** action.
 
 3. Set ```pfc_storm_start``` and ```pfc_storm_stop``` variables to platform-specific template names
 in ```pfc_storm_template``` pytest fixture
+
+
+## Global variables
+```
+PFC_GEN_FILE = "pfc_gen.py"
+PFC_FRAMES_NUMBER = 1000000
+PFC_QUEUE_INDEX = 0xff
+```
 
 ## Test
 
