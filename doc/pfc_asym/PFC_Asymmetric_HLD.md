@@ -82,6 +82,44 @@ Preparation before test cases run will be executed in the following pytest fixtu
 
 Description each of the fixture is below.
 
+### deploy_pfc_gen (scope="module", autouse=True)
+
+Deploy ```roles/test/files/helpers/pfc_gen.py``` to the fanout host.
+This step can be different for different platforms. Below there is description how it works for Mellanox and Arista cases, also how to add support of another platform type.
+
+**Mellanox platform**
+
+PFC packet generator is automatically deployed during fanout deployment procedure.
+
+Example of deploying fanout for Mellanox:
+```
+ansible-playbook -i lab fanout.yml -l ${FANOUT} --become --tags pfcwd_config -vvvv
+```
+
+**Arista platform**
+
+Deploy steps:
+- Ensure destination directory exists on fanout:
+"/mnt/flash/"
+- Create pfc generator file in case it doesn't exist
+"/mnt/flash/pfc_gen.py"
+- Deploy PFC generator to the fanout switch:
+Copy "roles/test/files/helpers/pfc_gen.py" to "/mnt/flash" directory
+
+**Other platforms**
+
+Tests currently support deployment of arista fanout switches, **to support other platforms:**
+
+1. Add platform specific logic to deploy pfc packet generator automatically in ```deploy_pfc_gen``` pytest fixture.
+Or manualy deploy ```roles/test/files/helpers/pfc_gen.py``` and ensure the file is available on fanout switch.
+
+2. Create ```pfc_storm_[sku].j2``` and ```pfc_storm_stop_[sku].j2``` under ```ansible/roles/test/templates/```
+to trigger pfc storm **start/stop** action.
+
+3. Set ```pfc_storm_start``` and ```pfc_storm_stop``` variables to platform-specific template names
+in ```pfc_storm_template``` pytest fixture
+
+
 ### setup (scope="module")
 *Setup steps*
 
@@ -208,44 +246,24 @@ fanout.exec_template(pfc_storm_template["pfc_storm_start"], pfc_storm_template["
 fanout.exec_template(pfc_storm_template["pfc_storm_stop"], pfc_storm_template["template_params"])
 ```
 
+ 
+### enable_pfc_asym (scope="function")
 
-### deploy_pfc_gen (scope="module", autouse=True)
+*Setup steps*
 
-Deploy ```roles/test/files/helpers/pfc_gen.py``` to the fanout host.
-This step can be different for different platforms. Below there is description how it works for Mellanox and Arista cases, also how to add support of another platform type.
+* Enable asymmetric PFC on all server interfaces
 
-**Mellanox platform**
+For every server port(setup["server_ports"]) execute command:
 
-PFC packet generator is automatically deployed during fanout deployment procedure.
+```config interface pfc asymmetric [SERVER_PORT] on```
 
-Example of deploying fanout for Mellanox:
-```
-ansible-playbook -i lab fanout.yml -l ${FANOUT} --become --tags pfcwd_config -vvvv
-```
+*Teardown steps*
 
-**Arista platform**
+* Disable asymmetric PFC on all server interfaces
 
-Deploy steps:
-- Ensure destination directory exists on fanout:
-"/mnt/flash/"
-- Create pfc generator file in case it doesn't exist
-"/mnt/flash/pfc_gen.py"
-- Deploy PFC generator to the fanout switch:
-Copy "roles/test/files/helpers/pfc_gen.py" to "/mnt/flash" directory
+For every server port(setup["server_ports"]) execute command:
 
-**Other platforms**
-
-Tests currently support deployment of arista fanout switches, **to support other platforms:**
-
-1. Add platform specific logic to deploy pfc packet generator automatically in ```deploy_pfc_gen``` pytest fixture.
-Or manualy deploy ```roles/test/files/helpers/pfc_gen.py``` and ensure the file is available on fanout switch.
-
-2. Create ```pfc_storm_[sku].j2``` and ```pfc_storm_stop_[sku].j2``` under ```ansible/roles/test/templates/```
-to trigger pfc storm **start/stop** action.
-
-3. Set ```pfc_storm_start``` and ```pfc_storm_stop``` variables to platform-specific template names
-in ```pfc_storm_template``` pytest fixture
-
+```config interface pfc asymmetric [SERVER_PORT] off```
 
 ## Test
 
@@ -310,14 +328,13 @@ setup, pfc_storm_runner
 Verify that DUT generates PFC frames only on lossless priorities when asymmetric PFC is enabled
 
 #### Used fixtures
-setup
+setup, enable_pfc_asym
 
 #### Test steps
 - Setup:
   - Start ARP responder
   - Limit maximum bandwith rate on the destination port by setting "1" into SAI port attribute SAI_PORT_ATTR_QOS_SCHEDULER_PROFILE_ID
 
-- Enable asymmetric PFC on all server interfaces
 - As SAI attributes stores PFC values like a bit vector, calculate bitmask for each PFC mode according to configured "lossless" priorities:
   - Calculate bitmask for the PFC value
   - Calculate bitmask for the asymmetric PFC Tx value
@@ -341,7 +358,6 @@ setup
 - Send packets for lossy priorities from all server ports (src) to non-server port (dst)
 - Verify that PFC frames are not generated for lossy priorities
 
-- Disable asymmetric PFC on all server interfaces
 - Verify PFC value is restored to default
 
 - Teardown:
@@ -353,13 +369,11 @@ setup
 Verify that while receiving PFC frames DUT handle PFC frames on all priorities when asymetric mode is enabled
 
 #### Used fixtures
-setup, pfc_storm_runner
+setup, pfc_storm_runner, enable_pfc_asym
 
 #### Test steps
 - Setup:
   - Start ARP responder
-
-- Enable asymmetric PFC on all server interfaces
 
 - Clear all counters for all ports
 - Get lossless priorities
@@ -372,7 +386,6 @@ setup, pfc_storm_runner
 - Send packets for lossless priorities from non-server port (src) to all server ports (dst)
 - Verify that some packets are dropped on src port, which means that Rx queue is full
 - Verify that some packets are dropped on dst ports, which means that Tx buffer is full
-- Disable asymmetric PFC on all server interfaces
 
 - Teardown:
   - Stop ARP responder
