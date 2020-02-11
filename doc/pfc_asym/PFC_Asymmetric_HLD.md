@@ -164,8 +164,8 @@ in ```pfc_storm_template``` pytest fixture
       "pfc_tx_mask": [VALUE]
  },
  "ptf_test_params": {
-      "port_map_file": [VALUE],
-      "server": [VALUE],
+    "port_map_file": [VALUE],
+    "server": [VALUE],
     "server_ports": [VALUE],
     "non_server_port": [VALUE],
     "router_mac": [VALUE],
@@ -286,10 +286,10 @@ setup
 - Get lossy priorities
 - Get server ports info
 - Get non server port info (Portchannel peers)
-- Send packets for lossless priorities from all server ports (src) to non-server port (dst)
+- Send 10000 packets for lossless priorities from all server ports (src) to non-server port (dst)
 - Verify that some packets are dropped on src ports, which means that Rx queue is full
 - Verify that PFC frames are generated for lossless priorities from src ports
-- Send packets for lossy priorities from all server ports (src) to non-server port (dst)
+- Send 10000 packets for lossy priorities from all server ports (src) to non-server port (dst)
 - Verify that PFC frames are not generated for lossy priorities
 
 - Teardown:
@@ -312,11 +312,11 @@ setup, pfc_storm_runner
 - Get lossy priorities
 - Get server ports info
 - Get non server port info (Portchannel peers)
-- Send packets for lossy priorities from non-server port (src) to all server ports (dst)
+- Send 10000 packets for lossy priorities from non-server port (src) to all server ports (dst)
 - Verify that packets are not dropped on src port
 - Verify that packets are not dropped on dst ports
 - Verify that packets are transmitted from from dst ports
-- Send packets for lossless priorities from non-server port (src) to all server ports (dst)
+- Send 10000 packets for lossless priorities from non-server port (src) to all server ports (dst)
 - Verify that some packets are dropped on src port, which means that Rx queue is full
 - Verify that some packets are dropped on dst ports, which means that Tx buffer is full
 
@@ -352,10 +352,10 @@ setup, enable_pfc_asym
 - Get server ports info
 - Get non server port info (Portchannel peers)
 
-- Send packets for lossless priorities from all server ports (src) to non-server port (dst)
+- Send 10000 packets for lossless priorities from all server ports (src) to non-server port (dst)
 - Verify that some packets are dropped on src ports, which means that Rx queue is full
 - Verify that PFC frames are generated for lossless priorities
-- Send packets for lossy priorities from all server ports (src) to non-server port (dst)
+- Send 10000 packets for lossy priorities from all server ports (src) to non-server port (dst)
 - Verify that PFC frames are not generated for lossy priorities
 
 - Verify PFC value is restored to default
@@ -380,10 +380,10 @@ setup, pfc_storm_runner, enable_pfc_asym
 - Get lossy priorities
 - Get server ports info
 - Get non server port info (Portchannel peers)
-- Send packets for lossy priorities from non-server port (src) to all server ports (dst)
+- Send 10000 packets for lossy priorities from non-server port (src) to all server ports (dst)
 - Verify that packets are not dropped on src port
 - Verify that some packets are dropped on dst ports, which means that Tx buffer is full
-- Send packets for lossless priorities from non-server port (src) to all server ports (dst)
+- Send 10000 packets for lossless priorities from non-server port (src) to all server ports (dst)
 - Verify that some packets are dropped on src port, which means that Rx queue is full
 - Verify that some packets are dropped on dst ports, which means that Tx buffer is full
 
