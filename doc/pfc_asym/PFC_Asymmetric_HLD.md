@@ -38,7 +38,7 @@ No setup pre-configuration is required, test will configure and clean-up all the
 There is already existed PFC asymmetric test cases which use PTF to send traffic.
 Test suite location is ```ansible\roles\test\files\saitests\pfc_asym.py```
 
-It requires some updates.
+It requires several updates:
 
 1. Packets sending speed can be increased be using multiprocessing instead of multithreading library.
 
@@ -58,6 +58,8 @@ Fix the loop to store file only once
 
 Remove the following step which is defined by inline comment:
 ```Verify that some packets are dropped on dst port, which means that Tx buffer is full```
+
+Because on some platforms packets does not count on HLL while shaper is closed and count on the HLL & SLL as soon as shaper released (but not consistently).
 
 
 ## Python  modules to setup and run test (TODO)
