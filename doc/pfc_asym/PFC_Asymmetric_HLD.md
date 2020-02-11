@@ -1,25 +1,22 @@
-# Draft
 # Asymmetric PFC Test Plan
 
 * [Overview](#Overview)
    * [Scope](#Scope)
    * [Testbed](#Testbed)
-* [Setup configuration](#Setup%20configuration)
-* [Existed modules refactoring](#Existed%20modules%20refactoring)
-* [Python  modules to setup and run test](#Python%20modules%20to%20setup%20and%20run%20test)
-   * [Python modules](#Python%20modules)
-   * [Global variables](#Global%20variables)
-   * [PTF test case execution](#PTF%20test%20case%20execution)
-   * [Pytest fixtures](#Pytest%20fixtures)
+* [Setup configuration](#setup-configuration)
+* [Existed modules refactoring](#existed-modules-refactoring)
+* [Python  modules to setup and run test](#python-modules-to-setup-and-run-test)
+   * [Python modules](#python-modules)
+   * [Global variables](#global-variables)
+   * [PTF test case execution](#ptf-test-case-execution)
+   * [Pytest fixtures](#pytest-fixtures)
 		* [deploy_pfc_gen](#deploy_pfc_gen)
 		* [setup](#setup)
 		* [pfc_storm_template](#pfc_storm_template)
 		* [pfc_storm_runner](#pfc_storm_runner)
 		* [enable_pfc_asym](#enable_pfc_asym)
 * [Test](#Test)
-* [Test cases](#Test%20cases)
-* [TODO](#TODO)
-* [Open questions](#Open%20questions)
+* [Test cases](#Test-cases)
 
 ## Overview
 The purpose is to test functionality of Asymmetric PFC on the SONIC based DUT, closely resembling production environment.
@@ -62,7 +59,7 @@ Remove the following step which is defined by inline comment:
 Because on some platforms packets does not count on HLL while shaper is closed and count on the HLL & SLL as soon as shaper released (but not consistently).
 
 
-## Python  modules to setup and run test (TODO)
+## Python  modules to setup and run test
 
 ### Python modules
 *New test suite will be developed:*
@@ -392,8 +389,3 @@ setup, pfc_storm_runner, enable_pfc_asym
 
 - Teardown:
   - Stop ARP responder
-
-
-## TODO
-
-## Open questions
