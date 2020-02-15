@@ -28,33 +28,40 @@ The test is targeting a running SONIC system with fully functioning configuratio
 The test will run on the following testbeds:
 * T0
 
+### DUT image
+RPC image is required
+
 ## Setup configuration
 No setup pre-configuration is required, test will configure and clean-up all the configuration.
 
 ## Existed modules refactoring
 There is already existed PFC asymmetric test cases which use PTF to send traffic.
-Test suite location is ```ansible\roles\test\files\saitests\pfc_asym.py```
+
+Test suite location - ```ansible\roles\test\files\saitests\pfc_asym.py```
 
 It requires several updates:
 
-1. Packets sending speed can be increased be using multiprocessing instead of multithreading library.
+1. Packets sending speed can be increased by using multiprocessing instead of multithreading library.
 
-```PfcAsymBaseTest.send```
+Class ```PfcAsymBaseTest.send```
 
-Use ```multiprocessing.Process``` instead of ```threading.Thread```.
+Line ```83```
+
+Replace ```threading.Thread``` to use ```multiprocessing.Process``` instead.
 
 2. Looks like there is a redundancy in generating configuration file for ARP responder.
 
-```PfcAsymBaseTest.setUpArpResponder```
+Class ```PfcAsymBaseTest.setUpArpResponder```
+
+Line ```56```
 
 Fix the loop to store file only once
 
 3. Need to remove dst port drop counters verification.
 
-```PfcAsymOffOnTxTest.runTest```
+Class ```PfcAsymOffOnTxTest.runTest```
 
-Remove the following step which is defined by inline comment:
-```Verify that some packets are dropped on dst port, which means that Tx buffer is full```
+Line ```148```
 
 Because on some platforms packets does not count on HLL while shaper is closed and count on the HLL & SLL as soon as shaper released (but not consistently).
 
