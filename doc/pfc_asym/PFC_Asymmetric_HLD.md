@@ -7,7 +7,7 @@
 * [Existed modules refactoring](#existed-modules-refactoring)
 * [Python  modules to setup and run test](#python-modules-to-setup-and-run-test)
    * [Python modules](#python-modules)
-   * [Global variables](#global-variables)
+   * [PFC storm global variables](#pfc-storm-global-variables)
    * [PTF test case execution](#ptf-test-case-execution)
    * [Pytest fixtures](#pytest-fixtures)
 		* [deploy_pfc_gen](#deploy_pfc_gen)
@@ -73,26 +73,42 @@ Because on some platforms packets does not count on HLL while shaper is closed a
 
 ```tests/pfc_asym/pfc_asym.py```
 
-### Global variables
+### PFC storm global variables
 ```
 PFC_GEN_FILE = "pfc_gen.py"
+```
+PFC packets generator file name which is running on fanout
+```
 PFC_FRAMES_NUMBER = 1000000
+```
+Number of pause frames to send
+```
 PFC_QUEUE_INDEX = 0xff
 ```
+Specify which priority will use non zero pause frame time
+
 
 ### PTF test case execution
 To run existed PTF test cases there will be used ```tests/ptf_runner.py``` module
 
 ### Pytest fixtures
 Preparation before test cases run will be executed in the following pytest fixtures:
-```setup, pfc_storm_template, pfc_storm_runner, deploy_pfc_gen```
+- setup
+- pfc_storm_template
+- pfc_storm_runner
+- deploy_pfc_gen
 
-Description each of the fixture is below.
 
 ### deploy_pfc_gen (scope="module", autouse=True)
 
-Deploy ```roles/test/files/helpers/pfc_gen.py``` to the fanout host.
+To simulate that neighbors are overloaded (send many PFC frames) there is used PFC packets generator which is running on Fanout switch.
+File location - ```roles/test/files/helpers/pfc_gen.py```
+
+Currnet fixture deploys ```roles/test/files/helpers/pfc_gen.py``` to the fanout host.
 This step can be different for different platforms. Below there is description how it works for Mellanox and Arista cases, also how to add support of another platform type.
+
+#### Notes
+The logic of ```pfc_gen.py``` deployment is not changing here, it just perform already existed logic for ```pfc_gen.py``` deployment.
 
 **Mellanox platform**
 
@@ -130,8 +146,8 @@ in ```pfc_storm_template``` pytest fixture
 ### setup (scope="module")
 *Setup steps*
 
-	- Gather minigraph facts about the device
 	- Ensure topology is T0, skip tests run otherwise
+	- Gather minigraph facts about the device
 	- Get server ports OIDs
 		docker exec -i database redis-cli --raw -n 2 HMGET COUNTERS_PORT_NAME_MAP {server_ports_names}
 	- Get server ports info
@@ -144,7 +160,7 @@ in ```pfc_storm_template``` pytest fixture
 		- Copy ARP responder supervisor configuration to the PTF container
 			src=tests/scripts/arp_responder.conf.j2 dest=/etc/supervisor/conf.d/arp_responder.conf
 		- Update supervisor configuration
-			Execute on fanout:
+			Execute on PTF container:
 			supervisorctl reread
 			supervisorctl update
 	- Copy PTF tests to PTF host
@@ -159,8 +175,11 @@ in ```pfc_storm_template``` pytest fixture
 *Teardown steps*
 
 	- Verify PFC value is restored to default
+	- Remove PTF tests from PTF container
 	- Remove SAI tests from PTF container
-	- Remove portmap
+	- Remove portmap from PTF container
+	- Remove ARP responder
+	- Restore supervisor configuration
 
 *Return dictionary in format*
 
@@ -322,7 +341,7 @@ setup, pfc_storm_runner
 - Send 10000 packets for lossy priorities from non-server port (src) to all server ports (dst)
 - Verify that packets are not dropped on src port
 - Verify that packets are not dropped on dst ports
-- Verify that packets are transmitted from from dst ports
+- Verify that packets are transmitted from dst ports
 - Send 10000 packets for lossless priorities from non-server port (src) to all server ports (dst)
 - Verify that some packets are dropped on src port, which means that Rx queue is full
 - Verify that some packets are dropped on dst ports, which means that Tx buffer is full
