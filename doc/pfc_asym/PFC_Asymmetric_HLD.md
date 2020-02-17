@@ -144,42 +144,55 @@ in ```pfc_storm_template``` pytest fixture
 
 
 ### setup (scope="module")
+This fixture performs initial steps which is required for test case execution, defined in Setup/Teardown sections.
+
+Also it compose data which is used as input parameters for PTF test cases, and PFC - RX and TX masks which is used in test case logic.
+
+Collected data is returned by fixture as dictionary object and is available to use in pytest test cases.
+
 *Setup steps*
 
-	- Ensure topology is T0, skip tests run otherwise
-	- Gather minigraph facts about the device
-	- Get server ports OIDs
-		docker exec -i database redis-cli --raw -n 2 HMGET COUNTERS_PORT_NAME_MAP {server_ports_names}
-	- Get server ports info
-	- Get non server port info
-	- Set unique MACs to PTF interfaces
-		Run on PTF host- tests/scripts/change_mac.sh
-	- Set ARP responder:
-		- Copy ARP responder to PTF
-			src=tests/scripts/arp_responder.py; dst=/opt
-		- Copy ARP responder supervisor configuration to the PTF container
-			src=tests/scripts/arp_responder.conf.j2 dest=/etc/supervisor/conf.d/arp_responder.conf
-		- Update supervisor configuration
-			Execute on PTF container:
-			supervisorctl reread
-			supervisorctl update
-	- Copy PTF tests to PTF host
-		src=roles/test/files/ptftests dest=/root
-	- Copy SAI tests to PTF host
-		src=roles/test/files/saitests dest=/root
-	- Copy PTF portmap to PTF host
-		Copy default, if existed vendor specific, copy vendor specific
-		src=ansible/roles/test/files/mlnx/default_interface_to_front_map.ini
-		dst=/root/default_interface_to_front_map.ini
+- Ensure topology is T0, skip tests run otherwise
+- Gather minigraph facts about the device
+- Get server ports OIDs
+	```docker exec -i database redis-cli --raw -n 2 HMGET COUNTERS_PORT_NAME_MAP {server_ports_names}```
+- Get server ports info
+- Get non server port info
+- Set unique MACs to PTF interfaces
+	Run on PTF host- tests/scripts/change_mac.sh
+- Set ARP responder:
+	- Copy ARP responder to PTF
+		```src=tests/scripts/arp_responder.py; dst=/opt```
+	- Copy ARP responder supervisor configuration to the PTF container
+		```
+		src=tests/scripts/arp_responder.conf.j2
+		dest=/etc/supervisor/conf.d/arp_responder.conf
+		```
+	- Update supervisor configuration
+		Execute on PTF container:
+		```
+		supervisorctl reread
+		supervisorctl update
+		```
+- Copy PTF tests to PTF host
+	```src=roles/test/files/ptftests dest=/root```
+- Copy SAI tests to PTF host
+	```src=roles/test/files/saitests dest=/root```
+- Copy PTF portmap to PTF host
+	Copy default, if existed vendor specific, copy vendor specific
+	```
+	src=ansible/roles/test/files/mlnx/default_interface_to_front_map.ini
+	dst=/root/default_interface_to_front_map.ini
+	```
 
 *Teardown steps*
 
-	- Verify PFC value is restored to default
-	- Remove PTF tests from PTF container
-	- Remove SAI tests from PTF container
-	- Remove portmap from PTF container
-	- Remove ARP responder
-	- Restore supervisor configuration
+- Verify PFC value is restored to default
+- Remove PTF tests from PTF container
+- Remove SAI tests from PTF container
+- Remove portmap from PTF container
+- Remove ARP responder
+- Restore supervisor configuration
 
 *Return dictionary in format*
 
@@ -292,12 +305,14 @@ For every server port(setup["server_ports"]) execute command:
 ```config interface pfc asymmetric [SERVER_PORT] off```
 
 ## Test
+The purpose of the tests cases is to perform functional testing of Asymmetric PFC on SONIC system.
+General idea is to check how DUT behaves with enabled/disabled asymmetric PFC on server ports while DUT is overloaded with receiving PFC frames, which simulates that neighboars are overloaded by traffic.
 
 ## Test cases
 
-### Test case # 1 – Asymmetric PFC Off Generate PFC frames
+### Test case # 1 – Asymmetric PFC Off TX pause frames
 #### Test objective
-Verify that DUT generates PFC frames only on lossless priorities when asymmetric PFC is disabled
+Asymmetric PFC is disabled. Verify that DUT generates PFC frames only on lossless priorities when asymmetric PFC is disabled
 
 #### Used fixtures
 setup
@@ -324,7 +339,7 @@ setup
 
 ### Test case # 2 – Asymmetric PFC Off RX pause frames
 #### Test objective
-Verify that while receiving PFC frames DUT drops packets only for lossless priorities (RX and Tx queue buffers are full)
+Asymmetric PFC is disabled. Verify that while receiving PFC frames DUT drops packets only for lossless priorities (RX and Tx queue buffers are full)
 
 #### Used fixtures
 setup, pfc_storm_runner
@@ -349,9 +364,9 @@ setup, pfc_storm_runner
 - Teardown:
   - Stop ARP responder
 
-### Test case # 3 – Asymmetric PFC On Generate PFC frames
+### Test case # 3 – Asymmetric PFC On TX pause frames
 #### Test objective
-Verify that DUT generates PFC frames only on lossless priorities when asymmetric PFC is enabled
+Asymmetric PFC is enabled. Verify that DUT generates PFC frames only on lossless priorities when asymmetric PFC is enabled
 
 #### Used fixtures
 setup, enable_pfc_asym
@@ -390,9 +405,9 @@ setup, enable_pfc_asym
   - Restore maximum bandwith rate on the destination port by setting "0" into SAI port attribute SAI_PORT_ATTR_QOS_SCHEDULER_PROFILE_ID
    - Stop ARP responder
 
-### Test case # 4 – Asymmetric PFC "On" handle PFC frames on all priorities
+### Test case # 4 – Asymmetric PFC On Rx pause frames on all priorities
 #### Test objective
-Verify that while receiving PFC frames DUT handle PFC frames on all priorities when asymetric mode is enabled
+Asymmetric PFC is enabled. Verify that while receiving PFC frames DUT handle PFC frames on all priorities when asymetric mode is enabled
 
 #### Used fixtures
 setup, pfc_storm_runner, enable_pfc_asym
