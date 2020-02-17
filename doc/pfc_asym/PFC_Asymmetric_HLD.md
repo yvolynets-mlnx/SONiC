@@ -63,7 +63,10 @@ Class ```PfcAsymOffOnTxTest.runTest```
 
 Line ```148```
 
-Because on some platforms packets does not count on HLL while shaper is closed and count on the HLL & SLL as soon as shaper released (but not consistently).
+Because on some platforms when the egress port shaper rate is 0 then actual discards counting happens only when the shaper rate is configured to greater than 0.
+
+Also test case main goal is to check that DUT generates PFC frames but not Tx drops, so it is enought to
+verify that packets are dropped on src ports and that PFC frames are generated for lossless priorities
 
 
 ## Python  modules to setup and run test
@@ -376,7 +379,7 @@ setup, enable_pfc_asym
   - Start ARP responder
   - Limit maximum bandwith rate on the destination port by setting "1" into SAI port attribute SAI_PORT_ATTR_QOS_SCHEDULER_PROFILE_ID
 
-- As SAI attributes stores PFC values like a bit vector, calculate bitmask for each PFC mode according to configured "lossless" priorities:
+- As SAI attributes stores PFC values like a bit vector, calculate bitmask for each PFC mode according to configured "lossless" priorities to have possibility to check that asymmetric PFC configuration for RX and TX queues was applied correctly for configured PFC mode:
   - Calculate bitmask for the PFC value
   - Calculate bitmask for the asymmetric PFC Tx value
   - Calculate bitmask for the asymmetric PFC Rx value
