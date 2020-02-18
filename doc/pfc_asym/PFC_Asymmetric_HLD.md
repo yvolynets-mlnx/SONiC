@@ -22,7 +22,7 @@
 The purpose is to test functionality of Asymmetric PFC on the SONIC based DUT, closely resembling production environment.
 
 ### Scope
-The test is targeting a running SONIC system with fully functioning configuration. The purpose of the test is to perform functional testing of Asymmetric PFC on SONIC system. There will be reused existed PTF test suite for PFC Asymmetric which is located at ```ansible\roles\test\files\saitests\pfc_asym.py```.
+The test is targeting a running SONIC system with fully functioning configuration. The purpose of the test is to perform functional testing of Asymmetric PFC on SONIC system. There will be reused existed PTF test suite for PFC Asymmetric which is located at https://github.com/Azure/sonic-mgmt/blob/master/ansible/roles/test/files/saitests/pfc_asym.py.
 
 ### Testbed
 The test will run on the following testbeds:
@@ -37,36 +37,24 @@ No setup pre-configuration is required, test will configure and clean-up all the
 ## Existed modules refactoring
 There is already existed PFC asymmetric test cases which use PTF to send traffic.
 
-Test suite location - ```ansible\roles\test\files\saitests\pfc_asym.py```
+Test suite location
+
+https://github.com/Azure/sonic-mgmt/blob/master/ansible/roles/test/files/saitests/pfc_asym.py
 
 It requires several updates:
 
 1. Packets sending speed can be increased by using multiprocessing instead of multithreading library.
 
-Class ```PfcAsymBaseTest.send```
+https://github.com/Azure/sonic-mgmt/blob/master/ansible/roles/test/files/saitests/pfc_asym.py#L83
 
-Line ```83```
 
 Replace ```threading.Thread``` to use ```multiprocessing.Process``` instead.
 
 2. Looks like there is a redundancy in generating configuration file for ARP responder.
 
-Class ```PfcAsymBaseTest.setUpArpResponder```
-
-Line ```56```
+https://github.com/Azure/sonic-mgmt/blob/master/ansible/roles/test/files/saitests/pfc_asym.py#L56
 
 Fix the loop to store file only once
-
-3. Need to remove dst port drop counters verification.
-
-Class ```PfcAsymOffOnTxTest.runTest```
-
-Line ```148```
-
-Because on some platforms when the egress port shaper rate is 0 then actual discards counting happens only when the shaper rate is configured to greater than 0.
-
-Also test case main goal is to check that DUT generates PFC frames but not Tx drops, so it is enought to
-verify that packets are dropped on src ports and that PFC frames are generated for lossless priorities
 
 
 ## Python  modules to setup and run test
